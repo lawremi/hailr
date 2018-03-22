@@ -1,0 +1,25 @@
+---
+title: "Programming Hail with R: A Tutorial"
+author: "Michael Lawrence"
+package: hailr
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc_float: true
+vignette: >
+  %\VignetteIndexEntry{Tutorial}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+---
+
+# Introduction
+
+# The Data
+
+We are using a subset of the 1000 Genomes data, on about 10,000
+positions, along with some sample annotations with invented
+phenotypes, as provided by the Hail tutorial
+(https://hail.is/docs/stable/tutorials/hail-overview.html).
+
+# VariantDataset: The Central Data Structure of Hail
+

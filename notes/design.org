@@ -1,0 +1,28 @@
+* Requirements
+  Geneticists are faced with increasing challenges with respect to
+  scalability, and Hail is designed to solve this problem. Scientists
+  often work in R, using Bioconductor, so we want to provide an
+  R/Bioconductor interface to Hail.
+
+  High-level requirements:
+  * Implemented SummarizedExperiment API on top of Hail's
+    VariantDataset. They are roughly analogous, but VariantDataset has
+    hierarchical metadata, which will need to be lazily flattened into
+    R DataFrame objects.
+  * Hail utilities (like QC routines) will require extensions to the
+    SummarizedExperiment API.
+
+* Design
+  The SummarizedExperiment implementation could happen at levels. The
+  least abstraction would be to download the metadata, store it in
+  DataFrames, while keeping the assay data in Spark via a DelayedArray
+  backend. The next level would be to have HailDataFrame objects that
+  model the hierarchical metadata without actually downloading it.
+
+  The second approach is more technically challenging, but is likely
+  to be more performant, as the feature metadata and even the sample
+  metadata can be quite large. It would be more efficient to keep it
+  in one place, close to the assay data. The two approaches share many
+  of the same challenges anyway. For example, we will always want to
+  subset the entire dataset by the metadata, so we have to translate
+  operations on the metadata either way.

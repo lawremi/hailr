@@ -1,0 +1,13 @@
+import(methods)
+import(BiocGenerics)
+import(sparklyr)
+import(rappdirs)
+
+importFrom(utils, untar)
+importFrom(tools, file_path_sans_ext)
+
+export(use_spark_driver, use_hail)
+
+export(use_hail_context, hail_context)
+
+
