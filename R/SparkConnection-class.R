@@ -33,12 +33,6 @@ SparkConnection <- function(.impl, ...) {
 ### TODO: Figure out relationship between this and toJava(). Probably keep
 ### impl() as @impl accessor, then rename others to toJava().
 
-setGeneric("impl", function(x) standardGeneric("impl"))
-
-setMethod("impl", "ANY", function(x) x)
-
-setMethod("impl", "list", function(x) lapply(x, impl))
-
 setMethod("impl", "SparkConnection", function(x) x@impl)
 
 setGeneric("sparkContext", function(x, ...) standardGeneric("sparkContext"))

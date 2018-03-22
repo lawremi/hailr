@@ -5,7 +5,7 @@
 ### Represents a Hail VariantDataset as a SummarizedExperiment derivative.
 ###
 
-setClass("HailExperiment", slots=c(matrixTable="MatrixTable"),
+setClass("HailExperiment", slots=c(matrixTable="is.hail.variant.MatrixTable"),
          contains="SummarizedExperiment")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

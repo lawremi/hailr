@@ -9,7 +9,7 @@ SparkDriverManager_setCurrentDriver <-
     function(.self, driver) {
         stopifnot(is.character(driver),
                   length(driver) == 1L && !is.na(driver))
-        if (is.null(.self$getConnectionConstructor()))
+        if (is.null(.self$getConnectionConstructor(driver)))
             stop("No Spark driver found named '", driver, "'")
         .self$currentDriver <- driver
         .self

@@ -26,6 +26,8 @@ SparkObject <- function(impl) {
     new("SparkObject", impl=impl)
 }
 
+setGeneric("impl", function(x) standardGeneric("impl"))
+
 setMethod("impl", "SparkObject", function(x) x@impl)
 
 setMethod("$", "SparkObject", function(x, name) JavaPath(x, name))

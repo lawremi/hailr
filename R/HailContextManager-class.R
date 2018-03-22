@@ -31,5 +31,5 @@ hail_context <- function() {
     HailContextManager$getHailContext()
 }
 
-## delayedAssign("hail", HailContextManager$getContext())
-delayedAssign("hail", stop("foo"))
+delayedAssign("hail", HailContextManager$getContext())
+

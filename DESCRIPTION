@@ -7,9 +7,21 @@ Maintainer: Michael Lawrence <michafla@gene.com>
 Description: Enables computing on genotype data within Hail (and Spark)
              by writing R code based on Bioconductor APIs
 License: file GNE_LICENSE
-Imports: sparklyr
+Imports: SummarizedExperiment, utils, tools
 Depends:
     R (>= 3.2.0),
     BiocGenerics (>= 0.15.1),
     methods
-    
+Suggests: sparklyr, rappdirs
+Collate:
+	SparkObject-class.R
+	HailContext-class.R
+	MatrixTable-class.R
+	HailExperiment-class.R
+	SparkConnection-class.R
+	HailContextManager-class.R
+	SparkDriverManager-class.R
+	JavaPath-class.R
+	install-utils.R
+	java-utils.R
+	Sparklyr-driver.R
