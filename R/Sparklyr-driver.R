@@ -18,7 +18,7 @@ setIs("spark_jobj", "SparkDriverObject")
 setMethod("callMethod", "spark_connection",
           function(target, name, args) {
               do.call(sparklyr::invoke_static,
-                      c(list(target, paste(head(name, -1L), collapse="/"),
+                      c(list(target, paste(head(name, -1L), collapse="."),
                            tail(name, 1L)),
                         args))
           })

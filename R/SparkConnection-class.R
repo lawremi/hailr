@@ -14,13 +14,9 @@ setClass("SparkConnection", slots=c(impl="SparkDriverConnection"))
 ### Constructor
 ###
 
-defaultSparkConnectionImpl <- function(...) {
-    SparkBackendManager$getConnectionConstructor()(hail_jar(), ...)
-}
-
 SparkConnection <- function(.impl, ...) {
     if (missing(.impl)) {
-        .impl <- defaultSparkConnectionImpl(...)
+        .impl <- SparkDriverConnection(hail_jar())
     }
     stopifnot(is(.impl, "SparkDriverConnection"))
     new("SparkConnection", impl=.impl)
@@ -29,9 +25,6 @@ SparkConnection <- function(.impl, ...) {
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessors
 ###
-
-### TODO: Figure out relationship between this and toJava(). Probably keep
-### impl() as @impl accessor, then rename others to toJava().
 
 setMethod("impl", "SparkConnection", function(x) x@impl)
 

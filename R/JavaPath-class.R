@@ -7,10 +7,7 @@ setGeneric("callMethod",
 JavaPath <- function(target, ...) {
     path <- c(...)
     new("JavaPath", function(...) {
-        ans <- callMethod(impl(target), path, impl(list(...)))
-        if (is(ans, "SparkDriverObject"))
-            ans <- downcast(SparkObject(ans))
-        ans
+        fromJava(callMethod(impl(target), path, toJava(list(...))))
     })
 }
 
@@ -25,4 +22,3 @@ setMethod("$", "JavaPath", function(x, name) {
     path(x) <- c(path(x), name)
     x
 })
-

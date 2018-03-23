@@ -21,5 +21,11 @@ positions, along with some sample annotations with invented
 phenotypes, as provided by the Hail tutorial
 (https://hail.is/docs/stable/tutorials/hail-overview.html).
 
-# VariantDataset: The Central Data Structure of Hail
+# Setup
+
+The hailr package will automatically ensure that Hail is installed and
+configured for this demonstration. To use a system installation of
+Hail, outside of this example, see `?use_hail_home`.
+
+# HailExperiment: Central Interface to Hail
 

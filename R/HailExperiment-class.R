@@ -24,8 +24,8 @@ HailExperiment <- function(matrixTable) {
 ### I/O
 ###
 
-readHailExperiment <- function(file, ..., hail = hail_context())
+readHailExperiment <- function(file, ...)
 {
-    HailExperiment(readMatrixTable(file, ..., hail=hail))
+    HailExperiment(readMatrixTable(file, ...))
 }
 

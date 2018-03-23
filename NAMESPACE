@@ -5,7 +5,6 @@ import(SummarizedExperiment)
 importFrom(utils, untar)
 importFrom(tools, file_path_sans_ext)
 
-export(use_spark_driver, use_hail)
+export(use_spark_driver, use_hail_home, HailContext, use_hail_context,
+       readHailExperiment)
 export(use_hail_context, hail_context)
-
-

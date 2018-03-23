@@ -21,6 +21,7 @@ Collate:
 	SparkConnection-class.R
 	HailContextManager-class.R
 	SparkDriverManager-class.R
+	HailHomeManager-class.R
 	JavaPath-class.R
 	install-utils.R
 	java-utils.R

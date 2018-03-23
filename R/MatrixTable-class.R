@@ -14,7 +14,7 @@ MatrixTable <- function(.impl) {
 
 readMatrixTable <- function(file, drop.rows=FALSE, drop.cols=FALSE)
 {
-    hail$read(file, dropRows, dropCols)
+    hail_context()$read(file, dropRows, dropCols)
 }
 
 readMatrixTableFromVCF <- function(file, path, force=FALSE,
@@ -23,10 +23,10 @@ readMatrixTableFromVCF <- function(file, path, force=FALSE,
                                    drop.samples=FALSE, call.fields=character(),
                                    genome="default", contig.recoding=NULL)
 {
-    hail$importVCF(file, force, force.bgz, joption(header.file),
-                   joption(min.partitions), drop.samples,
-                   jset(call.fields),
-                   joption(rg), joption(contig.recoding))
+    hail_context()$importVCF(file, force, force.bgz, joption(header.file),
+                             joption(min.partitions), drop.samples,
+                             jset(call.fields),
+                             joption(rg), joption(contig.recoding))
 }
 
 ## TODO: readMatrixTableFromPlink()

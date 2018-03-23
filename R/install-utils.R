@@ -13,17 +13,21 @@ available_hails <- function() {
                spark_version = c("2.0.2", "2.2.1"))
 }
 
-hail_distribution <- function(spark_version, hail_version, hail_build) {
+hail_filename <- function(spark_version, hail_version, hail_build) {
+    paste0("Hail-", hail_version, "-", hail_build, "-Spark-",
+           spark_version, ".zip")
+}
+
+hail_url <- function(spark_version, hail_version, hail_build) {
     dist_url <- "https://storage.googleapis.com/hail-common/distributions"
     paste(dist_path, hail_version,
-          paste0("Hail-", hail_version, "-", hail_build, "-Spark-",
-                 spark_version, ".zip"),
+          hail_filename(spark_version, hail_version, hail_build),
           sep = "/")
 }
 
 download_hail <- function(hail) {
-    dist <- do.call(hail_distribution, hail)
-    dest_path <- file.path(tmpdir(), dist)
+    dist <- do.call(hail_url, hail)
+    dest_path <- file.path(tmpdir(), basename(dist))
     download.file(dist, dest_path)
     dest_path
 }
@@ -46,6 +50,8 @@ select_hail <- function(hails, version) {
         valid_sparks <- hail$spark_version
     }
     tail(hail[hail$spark_version %in% valid_sparks,], 1L)
+    if (nrow(ans) > 0L)
+        ans
 }
 
 extract_hail <- function(file) {
@@ -66,41 +72,18 @@ install_hail <- function(version) {
 }
 
 hail_dir <- function() {
-    file.path(user_data_dir("hailr"), "hail")
+    if (!requireNamespace("rappdirs"))
+        stop(strwrap(paste("The rappdirs package must be installed to use ",
+                           "the automatically installed Hail.\nPlease ",
+                           "install rappdirs or use a system Hail.")))
+    file.path(rappdirs::user_data_dir("hailr"), "hail")
 }
 
+## the installed hails specific to this version of the package
 installed_hails <- function() {
     dirs <- dir(hail_dir(), full.names=TRUE)
-    cbind(strcapture("Hail-(.*?)-(.*?)-Spark-(.*?)", dirs,
-                     data.frame(version=character(),
-                                build_hash=character(),
-                                spark_version=character())),
-          home=dirs)
-}
-
-use_hail <- function(home) {
-    if (missing(home)) {
-        home <- select_hail(installed_hails())$home
-        if (length(home) == 0L) {
-            home <- install_hail()
-        }
-    }
-    stopifnot(is.character(home),
-              length(home) == 1L && !is.na(home))
-    if (!file.exists(hail_jar(home)))
-        stop("No Hail installation found at '", home, "'")
-    Sys.setenv(HAIL_HOME=home)
-    invisible(home)
-}
-
-hail_jar <- function(home = hail_home()) {
-    file.path(home, "jars", "hail-all-spark.jar")
-}
-
-hail_home <- function() {
-    home <- Sys.getenv("HAIL_HOME")
-    if (home == "") {
-        home <- use_hail()
-    }
-    home
+    hails <- available_hails()
+    hail_filenames <- do.call(hail_filename, hails)
+    m <- match(hail_filenames, basename(dirs), 0L)
+    cbind(hails[m > 0L,], home=dirs[m])
 }
