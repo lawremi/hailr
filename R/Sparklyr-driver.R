@@ -10,31 +10,9 @@
 ###        there is another viable backend, we are keeping it here.
 ###
 
-setClass("SparklyrConnection", slots=c(impl="spark_connection"),
-         contains="SparkDriverConnection")
-
-setClass("SparklyrObject", slots=c(impl="spark_jobj"),
-         contains="SparkDriverObject")
-
-### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### Constructors
-###
-
-SparklyrConnection <- function(x) {
-    new("SparklyrConnection", impl=x)
-}
-
-SparklyrObject <- function(x) {
-    new("SparklyrObject", impl=x)
-}
-
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Method invocation
 ###
-
-setMethod("fromDriver", "spark_jobj", function(x) SparklyrObject(x))
-
-setMethod("fromDriver", "spark_connection", function(x) SparklyrConnection(x))
 
 setMethod("callMethod", "spark_connection",
           function(target, name, args) {
@@ -49,7 +27,7 @@ setMethod("callMethod", "spark_jobj",
           })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### SparkContext factory
+### sparkContext() accessor
 ###
 
 setMethod("sparkContext", "spark_connection",
@@ -63,6 +41,12 @@ setMethod("sparkConnection", "spark_jobj",
           function(x) sparklyr::spark_connection(x))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### fromJava() coercion
+###
+
+setMethod("fromJava", "spark_jobj", function(x) SparkObject(x))
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Driver registration and selection
 ###
 
@@ -70,7 +54,6 @@ register_spark_driver("sparklyr", function(jars, config=spark_config(), ...) {
     if (!requireNamespace("sparklyr", quietly=TRUE))
         stop("The sparklyr package is required to use the sparklyr backend")
     config[["sparklyr.jars.default"]] <- jars
-    con <- sparklyr::spark_connect("local", config=config, ...)
-    SparklyrConnection(con)
+    sparklyr::spark_connect("local", config=config, ...)
 })
 use_spark_driver("sparklyr")

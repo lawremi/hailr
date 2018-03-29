@@ -8,7 +8,7 @@
 ### based on its driver.
 ###
 
-setClass("SparkObject", slots = c(impl="SparkDriverObject"),
+setClass("SparkObject", slots = c(impl="ANY"),
          validity = function(object) {
              class <-
                  tryCatch(sparkConnection(object)$Class$forName(class(object)),
@@ -21,7 +21,7 @@ setClass("SparkObject", slots = c(impl="SparkDriverObject"),
          })
 
 SparkObject <- function(impl) {
-    downcast(new("SparkObject", impl=fromDriver(impl)))
+    downcast(new("SparkObject", impl=impl))
 }
 
 impl <- function(x) x@impl

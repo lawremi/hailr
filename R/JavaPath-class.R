@@ -7,6 +7,10 @@ JavaPath <- function(target, ...) {
     })
 }
 
+setGeneric("callMethod",
+           function(target, name, ...) standardGeneric("callMethod"),
+           signature="target")
+
 path <- function(x) environment(x)$path
 
 `path<-` <- function(x, value) {

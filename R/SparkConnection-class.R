@@ -6,7 +6,7 @@
 ### Java methods, and create Spark contexts.
 ###
 
-setClass("SparkConnection", slots=c(impl="SparkDriverConnection"))
+setClass("SparkConnection", slots=c(impl="ANY"))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Constructor
@@ -15,8 +15,6 @@ setClass("SparkConnection", slots=c(impl="SparkDriverConnection"))
 SparkConnection <- function(.impl, ...) {
     if (missing(.impl)) {
         .impl <- SparkDriverConnection(...)
-    } else {
-        .impl <- fromDriver(.impl)
     }
     new("SparkConnection", impl=.impl)
 }

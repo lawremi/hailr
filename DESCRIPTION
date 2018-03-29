@@ -14,7 +14,6 @@ Depends:
     methods
 Suggests: rappdirs
 Collate:
-        SparkDriverObject-class.R
 	SparkObject-class.R
 	HailContext-class.R
 	MatrixTable-class.R
