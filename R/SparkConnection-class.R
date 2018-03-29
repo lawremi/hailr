@@ -6,8 +6,6 @@
 ### Java methods, and create Spark contexts.
 ###
 
-setClass("SparkDriverConnection")
-
 setClass("SparkConnection", slots=c(impl="SparkDriverConnection"))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -16,9 +14,10 @@ setClass("SparkConnection", slots=c(impl="SparkDriverConnection"))
 
 SparkConnection <- function(.impl, ...) {
     if (missing(.impl)) {
-        .impl <- SparkDriverConnection(hail_jar())
+        .impl <- SparkDriverConnection(...)
+    } else {
+        .impl <- fromDriver(.impl)
     }
-    stopifnot(is(.impl, "SparkDriverConnection"))
     new("SparkConnection", impl=.impl)
 }
 
@@ -26,12 +25,10 @@ SparkConnection <- function(.impl, ...) {
 ### Accessors
 ###
 
-setMethod("impl", "SparkConnection", function(x) x@impl)
-
 setGeneric("sparkContext", function(x, ...) standardGeneric("sparkContext"))
 
 setMethod("sparkContext", "SparkConnection",
-          function(x) SparkContext(sparkContext(impl(x))))
+          function(x) SparkObject(sparkContext(impl(x))))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Method invocation

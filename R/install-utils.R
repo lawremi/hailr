@@ -8,26 +8,29 @@ install_spark <- function(version) {
 }
 
 available_hails <- function() {
-    data.frame(version       = "0.1",
-               build_hash    = "20613ed50c74",
-               spark_version = c("2.0.2", "2.2.1"))
+    rbind(data.frame(version       = "0.1",
+                     build         = "20613ed50c74",
+                     spark_version = c("2.0.2", "2.1.0")),
+          data.frame(version       = "devel",
+                     build         = "fdf130b2f5d4",
+                     spark_version = c("2.2.0")))
 }
 
-hail_filename <- function(spark_version, hail_version, hail_build) {
-    paste0("Hail-", hail_version, "-", hail_build, "-Spark-",
+hail_filename <- function(version, build, spark_version) {
+    paste0("Hail-", version, "-", build, "-Spark-",
            spark_version, ".zip")
 }
 
-hail_url <- function(spark_version, hail_version, hail_build) {
+hail_url <- function(version, build, spark_version) {
     dist_url <- "https://storage.googleapis.com/hail-common/distributions"
-    paste(dist_path, hail_version,
-          hail_filename(spark_version, hail_version, hail_build),
+    paste(dist_url, version,
+          hail_filename(version, build, spark_version),
           sep = "/")
 }
 
 download_hail <- function(hail) {
     dist <- do.call(hail_url, hail)
-    dest_path <- file.path(tmpdir(), basename(dist))
+    dest_path <- file.path(tempdir(), basename(dist))
     download.file(dist, dest_path)
     dest_path
 }
@@ -37,28 +40,31 @@ select_hail <- function(hails, version) {
         stopifnot(is.character(version),
                   length(version) == 1L && !is.na(version))
         hails <- hails[hails$version == version,]
-        if (nrow(hails) == 0L) {
-            stop("No Hail available with version '", version, "'")
-        }
+    }
+    if (nrow(hails) == 0L) {
+        return(NULL)
     }
     sparks <- installed_sparks()
-    valid_sparks <- intersect(sparks$version %in% hails$spark_version)
+    valid_sparks <- intersect(sparks$spark, hails$spark_version)
     if (length(valid_sparks) == 0L) {
         hail <- tail(hails, 1L)
-        message("No valid Spark version installed for Hail '", version, "'")
+        message("No supported Spark version installed for Hail version '",
+                hail$version, "'")
         install_spark(hail$spark_version)
         valid_sparks <- hail$spark_version
     }
-    tail(hail[hail$spark_version %in% valid_sparks,], 1L)
-    if (nrow(ans) > 0L)
+    ans <- tail(hails[hails$spark_version %in% valid_sparks,], 1L)
+    if (nrow(ans) > 0L) {
         ans
+    }
 }
 
 extract_hail <- function(file) {
-    exdir <- file.path(hail_dir(), file_path_sans_ext(basename(dest)))
+    exdir <- file.path(hail_dir(), file_path_sans_ext(basename(file)))
     if (file.exists(exdir))
         unlink(exdir)
-    invisible(untar(file, exdir=exdir))
+    untar(file, exdir=exdir)
+    invisible(exdir)
 }
 
 install_hail <- function(version) {
@@ -84,6 +90,8 @@ installed_hails <- function() {
     dirs <- dir(hail_dir(), full.names=TRUE)
     hails <- available_hails()
     hail_filenames <- do.call(hail_filename, hails)
-    m <- match(hail_filenames, basename(dirs), 0L)
-    cbind(hails[m > 0L,], home=dirs[m])
+    m <- match(file_path_sans_ext(hail_filenames), basename(dirs), 0L)
+    ans <- hails[m > 0L,]
+    ans$home <- dirs[m]
+    ans
 }

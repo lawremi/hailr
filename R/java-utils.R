@@ -30,8 +30,6 @@ setMethod("toJava", "SparkObject", function(x) impl(x))
 
 setGeneric("fromJava", function(x) standardGeneric("fromJava"))
 
-setMethod("fromJava", "SparkDriverObject",
-          function(x) {
-              downcast(SparkObject(x))
-          })
+setMethod("fromJava", "ANY", function(x) x)
 
+setMethod("fromJava", "SparkDriverObject", function(x) SparkObject(x))

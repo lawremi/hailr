@@ -8,8 +8,6 @@
 ### based on its driver.
 ###
 
-setClass("SparkDriverObject")
-
 setClass("SparkObject", slots = c(impl="SparkDriverObject"),
          validity = function(object) {
              class <-
@@ -23,19 +21,17 @@ setClass("SparkObject", slots = c(impl="SparkDriverObject"),
          })
 
 SparkObject <- function(impl) {
-    new("SparkObject", impl=impl)
+    downcast(new("SparkObject", impl=fromDriver(impl)))
 }
 
-setGeneric("impl", function(x) standardGeneric("impl"))
-
-setMethod("impl", "SparkObject", function(x) x@impl)
+impl <- function(x) x@impl
 
 setMethod("$", "SparkObject", function(x, name) JavaPath(x, name))
 
 setGeneric("sparkConnection", function(x) standardGeneric("sparkConnection"))
 
 setMethod("sparkConnection", "SparkObject",
-          function(x) SparkConnection(sparkConnnection(impl(x))))
+          function(x) SparkConnection(sparkConnection(impl(x))))
 
 java_superclasses <- function(x) {
     class <- x$getClass()

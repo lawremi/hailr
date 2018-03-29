@@ -1,9 +1,5 @@
 setClass("JavaPath", contains="function")
 
-setGeneric("callMethod",
-           function(target, name, ...) standardGeneric("callMethod"),
-           signature="target")
-
 JavaPath <- function(target, ...) {
     path <- c(...)
     new("JavaPath", function(...) {

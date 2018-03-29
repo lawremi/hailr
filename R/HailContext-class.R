@@ -7,14 +7,24 @@
 
 setClass("is.hail.HailContext", contains="SparkObject")
 
-setClass("HailContext", slots=c(impl="is.hail.HailContext"))
+hail_config <- function() {
+    list(spark.serializer="org.apache.spark.serializer.KryoSerializer",
+         spark.kryo.registrator="is.hail.kryo.HailKryoRegistrator")
+}
 
-HailContext <- function(context = sparkContext(SparkConnection()),
+HailConnection <- function(jars = character(), config = list(), ...) {
+    jars <- c(hail_jar(), jars)
+    conf <- hail_config()
+    conf[names(config)] <- config
+    SparkConnection(jars=jars, config=conf, ...)
+}
+
+HailContext <- function(context = sparkContext(HailConnection()),
                         logFile = "hail.log", append = FALSE,
                         branchingFactor = 50L) {
     con <- sparkConnection(context)
     ## 'appName', 'master', 'local' and 'minBlockSize' taken from 'context'
-    impl <- con$is$hail$HailContext$apply(sc = context,
+    impl <- con$is$hail$HailContext$apply(context,
                                           appName = "Hail", # ignored
                                           master = NULL, # ignored
                                           local = "local[*]", # ignored
@@ -23,6 +33,6 @@ HailContext <- function(context = sparkContext(SparkConnection()),
                                           append = append,
                                           minBlockSize = 1L, # ignored
                                           branchingFactor = branchingFactor,
-                                          tmpDir = tmpdir())    
-    new("HailContext", impl=impl)
+                                          tmpDir = tempdir())
+    new("is.hail.HailContext", impl=impl)
 }

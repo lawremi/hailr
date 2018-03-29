@@ -48,7 +48,3 @@ use_spark_driver <- function(driver) {
     SparkDriverManager$setCurrentDriver(driver)
     invisible()
 }
-
-SparkDriverConnection <- function(...) {
-    SparkBackendManager$getConnectionConstructor()(...)
-}

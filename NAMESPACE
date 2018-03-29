@@ -2,9 +2,12 @@ import(methods)
 import(BiocGenerics)
 import(SummarizedExperiment)
 
+importClassesFrom(sparklyr, spark_connection, spark_jobj)
+
 importFrom(utils, untar)
 importFrom(tools, file_path_sans_ext)
 
-export(use_spark_driver, use_hail_home, HailContext, use_hail_context,
-       readHailExperiment)
-export(use_hail_context, hail_context)
+export(use_spark_driver, use_hail_home, use_hail_context, HailContext,
+       install_hail)
+
+export(readHailExperiment)

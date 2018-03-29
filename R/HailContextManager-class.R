@@ -3,7 +3,7 @@
 ### -------------------------------------------------------------------------
 ###
 
-setClassUnion("HailContext_OR_NULL", c("HailContext", "NULL"))
+setClassUnion("HailContext_OR_NULL", c("is.hail.HailContext", "NULL"))
 
 HailContextManager_getContext <- function(.self) {
     ctx <- .self$context

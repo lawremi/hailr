@@ -23,9 +23,9 @@ HailHomeManager_setHome <- function(.self, home) {
 }
 
 HailHomeManager <- 
-    setRefClass("HailHomeManager", fields=c(context="character_OR_NULL"),
-                methods=list(getHailHome=HailHomeManager_getHome,
-                             setHailHome=HailHomeManager_setHome))()
+    setRefClass("HailHomeManager", fields=c(home="character_OR_NULL"),
+                methods=list(getHome=HailHomeManager_getHome,
+                             setHome=HailHomeManager_setHome))()
 
 default_hail_home <- function() {
     select_hail(installed_hails())$home
@@ -42,11 +42,11 @@ hail_home <- function() {
 ensure_hail_home <- function() {
     home <- hail_home()
     if (is.null(home)) {
-        use_hail_home(install_hail())
+        home <- use_hail_home(install_hail())
     }
-    invisible(TRUE)
+    home
 }
 
 hail_jar <- function(home = ensure_hail_home()) {
-    file.path(home, "jars", "hail-all-spark.jar")
+    file.path(home, "hail", "jars", "hail-all-spark.jar")
 }
