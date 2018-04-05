@@ -24,15 +24,14 @@ HailContext <- function(context = sparkContext(HailConnection()),
                         branchingFactor = 50L) {
     con <- sparkConnection(context)
     ## 'appName', 'master', 'local' and 'minBlockSize' taken from 'context'
-    impl <- con$is$hail$HailContext$apply(context,
-                                          appName = "Hail", # ignored
-                                          master = NULL, # ignored
-                                          local = "local[*]", # ignored
-                                          logFile = logFile,
-                                          quiet = TRUE,
-                                          append = append,
-                                          minBlockSize = 1L, # ignored
-                                          branchingFactor = branchingFactor,
-                                          tmpDir = tempdir())
-    new("is.hail.HailContext", impl=impl)
+    con$is$hail$HailContext$apply(context,
+                                  appName = "Hail", # ignored
+                                  master = NULL, # ignored
+                                  local = "local[*]", # ignored
+                                  logFile = logFile,
+                                  quiet = TRUE,
+                                  append = append,
+                                  minBlockSize = 1L, # ignored
+                                  branchingFactor = branchingFactor,
+                                  tmpDir = tempdir())
 }

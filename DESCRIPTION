@@ -14,6 +14,7 @@ Depends:
     methods
 Suggests: rappdirs
 Collate:
+        JavaMethodTarget-class.R
 	SparkObject-class.R
 	HailContext-class.R
 	MatrixTable-class.R

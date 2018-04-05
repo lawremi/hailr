@@ -29,3 +29,8 @@ readHailExperiment <- function(file, ...)
     HailExperiment(readMatrixTable(file, ...))
 }
 
+readHailExperimentFromVCF <- function(file, ...)
+{
+    HailExperiment(readMatrixTableFromVCF(file, ...))
+}
+

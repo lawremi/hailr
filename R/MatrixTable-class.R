@@ -14,19 +14,38 @@ MatrixTable <- function(.impl) {
 
 readMatrixTable <- function(file, drop.rows=FALSE, drop.cols=FALSE)
 {
-    hail_context()$read(file, dropRows, dropCols)
+    hail_context()$read(file, drop.rows, drop.cols)
 }
 
-readMatrixTableFromVCF <- function(file, path, force=FALSE,
+genomeFromVCFHeader <- function(file) {
+    if (requireNamespace("VariantAnnotation")) {
+        genome <- unique(genome(VariantAnnotation::scanVcfHeader(file)))
+        if (length(genome) != 1L) {
+            stop("Unable to determine 'genome' from VCF header, please specify")
+        }
+        genome
+    } else {
+        stop("If 'genome' is missing, the VariantAnnotation package is ",
+             "required to extract the genome from the VCF header")
+    }
+}
+
+readMatrixTableFromVCF <- function(file, force=FALSE,
                                    force.bgz=FALSE, header.file=NULL,
                                    min.partitions=NULL,
                                    drop.samples=FALSE, call.fields=character(),
-                                   genome="default", contig.recoding=NULL)
+                                   genome=NA_character_, contig.recoding=NULL)
 {
-    hail_context()$importVCF(file, force, force.bgz, joption(header.file),
-                             joption(min.partitions), drop.samples,
-                             jset(call.fields),
-                             joption(rg), joption(contig.recoding))
+    stopifnot(is.character(genome), length(genome) == 1L)
+    if (is.na(genome)) {
+        genome <- genomeFromVCFHeader(file)
+    }
+    sc <- sparkConnection(hail_context())
+    genome <- sc$is$hail$variant$ReferenceGenome$getReference(genome)
+    hail_context()$importVCF(file, force, force.bgz, ScalaOption(header.file),
+                             ScalaOption(min.partitions), drop.samples,
+                             ScalaSet(call.fields),
+                             ScalaOption(genome), ScalaOption(contig.recoding))
 }
 
 ## TODO: readMatrixTableFromPlink()

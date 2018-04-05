@@ -10,4 +10,4 @@ importFrom(tools, file_path_sans_ext)
 export(use_spark_driver, use_hail_home, use_hail_context, HailContext,
        install_hail)
 
-export(readHailExperiment)
+export(readHailExperiment, readHailExperimentFromVCF)

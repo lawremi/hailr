@@ -8,7 +8,7 @@
 ### based on its driver.
 ###
 
-setClass("SparkObject", slots = c(impl="ANY"),
+setClass("SparkObject", slots = c(impl="ANY"), contains="JavaMethodTarget",
          validity = function(object) {
              class <-
                  tryCatch(sparkConnection(object)$Class$forName(class(object)),
@@ -20,37 +20,58 @@ setClass("SparkObject", slots = c(impl="ANY"),
              }
          })
 
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Constructor
+###
+
 SparkObject <- function(impl) {
-    downcast(new("SparkObject", impl=impl))
+    new("SparkObject", impl=impl)
 }
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Accessors
+###
 
 impl <- function(x) x@impl
 
-setMethod("$", "SparkObject", function(x, name) JavaPath(x, name))
+setMethod("[[", "SparkObject", function (x, i, j, ...) {
+    stopifnot(missing(j), missing(...))
+    stopifnot(is.character(i) && length(i) == 1L && !is.na(i))
+    x$getClass()$getField(i)$get(x)
+})
 
 setGeneric("sparkConnection", function(x) standardGeneric("sparkConnection"))
 
 setMethod("sparkConnection", "SparkObject",
           function(x) SparkConnection(sparkConnection(impl(x))))
 
+setMethod("jvm", "SparkObject", function(x) sparkConnection(x))
+
+setMethod("toJava", "SparkObject", function(x, jvm) impl(x))
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Utilities
+###
+
 java_superclasses <- function(x) {
-    class <- x$getClass()
+    ### NOTE: cannot use '$' here, since it downcasts and infinitely recurses
+    class <- callMethod(x, "getClass")
     supers <- character()
     while(!is.null(class)) {
-        classes <- c(classes, class$getName())
-        class <- class$getSuperClass()
+        supers <- c(supers, callMethod(class, "getName"))
+        class <- callMethod(class, "getSuperclass")
     }
     supers
 }
 
 S4_subclasses <- function(x) {
     ## should get all recursive subclasses if information is complete
-    vapply(getClass(class(x))@subclasses, `@`, character(1L), "subClass")
+    vapply(getClass(class(x))@subclasses, slot, character(1L), "subClass")
 }
 
 downcast <- function(x) {
     candidates <- c(class(x), S4_subclasses(x))
-    deepest <- which.min(match(candidates, superclasses(x)))
+    deepest <- which.min(match(candidates, java_superclasses(x)))
     if (length(deepest) > 0L)
         as(x, candidates[deepest])
     else x

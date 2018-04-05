@@ -15,15 +15,15 @@
 ###
 
 setMethod("callMethod", "spark_connection",
-          function(target, name, args) {
+          function(target, path, args) {
               do.call(sparklyr::invoke_static,
-                      c(list(target), paste(head(name, -1L), collapse="."),
-                        tail(name, 1L), args))
+                      c(list(target), pathToClassName(head(path, -1L)),
+                        tail(path, 1L), args))
           })
 
 setMethod("callMethod", "spark_jobj",
-          function(target, name, args) {
-              do.call(sparklyr::invoke, c(list(target, name), args))
+          function(target, path, args) {
+              do.call(sparklyr::invoke, c(list(target, path), args))
           })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

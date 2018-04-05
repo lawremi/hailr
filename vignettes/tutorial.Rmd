@@ -52,6 +52,6 @@ The data are stored as a VDS file within the hailr package. We load
 the VDS file as a HailExperiment:
 
 ```{r}
-vds <- system.file("extdata", "1kg.vds", package="hailr")
-he <- readHailExperiment(vds)
+vcf <- system.file("extdata", "1kg.vcf.bgz", package="hailr")
+he <- readHailExperimentFromVCF(vcf, genome="GRCh37")
 ```

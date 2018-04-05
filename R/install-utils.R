@@ -67,6 +67,20 @@ extract_hail <- function(file) {
     invisible(exdir)
 }
 
+prompt_to_install_hail <- function() {
+    if (!interactive()) {
+        install_hail()
+    } else {
+        message("Install hail?")
+        res <- readline("y/n: ")
+        if (res == "y") {
+            install_hail()
+        } else {
+            stop("Please install Hail to run tests/examples")
+        }
+    }
+}
+
 install_hail <- function(version) {
     if (!requireNamespace("sparklyr"))
         stop(strwrap(paste(
@@ -82,7 +96,7 @@ hail_dir <- function() {
         stop(strwrap(paste("The rappdirs package must be installed to use ",
                            "the automatically installed Hail.\nPlease ",
                            "install rappdirs or use a system Hail.")))
-    file.path(rappdirs::user_data_dir("hailr"), "hail")
+    file.path(rappdirs::user_data_dir("R"), "hailr", "hail")
 }
 
 ## the installed hails specific to this version of the package

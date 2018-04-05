@@ -42,7 +42,7 @@ hail_home <- function() {
 ensure_hail_home <- function() {
     home <- hail_home()
     if (is.null(home)) {
-        home <- use_hail_home(install_hail())
+        home <- use_hail_home(prompt_to_install_hail())
     }
     home
 }

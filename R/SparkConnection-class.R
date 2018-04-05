@@ -6,7 +6,7 @@
 ### Java methods, and create Spark contexts.
 ###
 
-setClass("SparkConnection", slots=c(impl="ANY"))
+setClass("SparkConnection", slots=c(impl="ANY"), contains="JavaMethodTarget")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Constructor
@@ -28,8 +28,4 @@ setGeneric("sparkContext", function(x, ...) standardGeneric("sparkContext"))
 setMethod("sparkContext", "SparkConnection",
           function(x) SparkObject(sparkContext(impl(x))))
 
-### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### Method invocation
-###
-
-setMethod("$", "SparkConnection", function(x, name) JavaPath(x, name))
+setMethod("jvm", "SparkConnection", function(x) x)
