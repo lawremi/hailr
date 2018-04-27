@@ -5,7 +5,7 @@
 ### R proxy for a HailContext
 ###
 
-setClass("is.hail.HailContext", contains="SparkObject")
+setClass("is.hail.HailContext", contains="JavaObject")
 
 hail_config <- function() {
     list(spark.serializer="org.apache.spark.serializer.KryoSerializer",
@@ -22,16 +22,15 @@ HailConnection <- function(jars = character(), config = list(), ...) {
 HailContext <- function(context = sparkContext(HailConnection()),
                         logFile = "hail.log", append = FALSE,
                         branchingFactor = 50L) {
-    con <- sparkConnection(context)
     ## 'appName', 'master', 'local' and 'minBlockSize' taken from 'context'
-    con$is$hail$HailContext$apply(context,
-                                  appName = "Hail", # ignored
-                                  master = NULL, # ignored
-                                  local = "local[*]", # ignored
-                                  logFile = logFile,
-                                  quiet = TRUE,
-                                  append = append,
-                                  minBlockSize = 1L, # ignored
-                                  branchingFactor = branchingFactor,
-                                  tmpDir = tempdir())
+    jvm(context)$is$hail$HailContext$apply(context,
+                                           appName = "Hail", # ignored
+                                           master = NULL, # ignored
+                                           local = "local[*]", # ignored
+                                           logFile = logFile,
+                                           quiet = TRUE,
+                                           append = append,
+                                           minBlockSize = 1L, # ignored
+                                           branchingFactor = branchingFactor,
+                                           tmpDir = tempdir())
 }

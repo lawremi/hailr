@@ -17,7 +17,7 @@
 ### those proxy classes anyway, so that we can define coercions
 ### between the low-level and high-level classes.
 
-setClass("is.hail.expr.types.Type", contains="SparkObject")
+setClass("is.hail.expr.types.Type", contains="JavaObject")
 
 ## Except for TBinary, these all refer to scalars (per row)
 setClass("is.hail.expr.types.TBoolean", contains="is.hail.expr.types.Type")

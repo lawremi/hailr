@@ -42,17 +42,17 @@ setMethod("sparkContext", "spark_connection",
           function(x) sparklyr::spark_context(x))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### sparkConnection() accessor
+### jvm() accessor
 ###
 
-setMethod("sparkConnection", "spark_jobj",
+setMethod("jvm", "spark_jobj",
           function(x) sparklyr::spark_connection(x))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### fromJava() coercion
 ###
 
-setMethod("fromJava", "spark_jobj", function(x) SparkObject(x))
+setMethod("fromJava", "spark_jobj", function(x) JavaObject(x))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Driver registration and selection

@@ -1,18 +1,17 @@
 ### =========================================================================
-### SparkObject objects
+### JavaObject objects
 ### -------------------------------------------------------------------------
 ###
-### High-level abstraction around Spark objects. The hierarchy under
-### SparkObject should mirror the Java hierarchy. Every SparkObject
+### High-level abstraction around Java objects. The hierarchy under
+### JavaObject should mirror the Java hierarchy. Every JavaObject
 ### has an underlying implementing instance, which is polymorphic
 ### based on its driver.
 ###
 
-setClass("SparkObject", slots = c(impl="ANY"), contains="JavaMethodTarget",
+setClass("JavaObject", slots = c(impl="ANY"), contains="JavaMethodTarget",
          validity = function(object) {
-             class <-
-                 tryCatch(sparkConnection(object)$Class$forName(class(object)),
-                          error=function(e) { })
+             class <- tryCatch(jvm(object)$Class$forName(class(object)),
+                               error=function(e) { })
              if (!is.null(class) && !class$isAssignableFrom(object$getClass()))
              {
                  paste0("class '", class$getName(), "' not assignable from '",
@@ -24,8 +23,8 @@ setClass("SparkObject", slots = c(impl="ANY"), contains="JavaMethodTarget",
 ### Constructor
 ###
 
-SparkObject <- function(impl) {
-    new("SparkObject", impl=impl)
+JavaObject <- function(impl) {
+    new("JavaObject", impl=impl)
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -34,20 +33,15 @@ SparkObject <- function(impl) {
 
 impl <- function(x) x@impl
 
-setMethod("[[", "SparkObject", function (x, i, j, ...) {
+setMethod("[[", "JavaObject", function (x, i, j, ...) {
     stopifnot(missing(j), missing(...))
     stopifnot(is.character(i) && length(i) == 1L && !is.na(i))
     x$getClass()$getField(i)$get(x)
 })
 
-setGeneric("sparkConnection", function(x) standardGeneric("sparkConnection"))
+setMethod("jvm", "JavaObject", function(x) JVM(jvm(impl(x))))
 
-setMethod("sparkConnection", "SparkObject",
-          function(x) SparkConnection(sparkConnection(impl(x))))
-
-setMethod("jvm", "SparkObject", function(x) sparkConnection(x))
-
-setMethod("toJava", "SparkObject", function(x, jvm) impl(x))
+setMethod("toJava", "JavaObject", function(x, jvm) impl(x))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Utilities

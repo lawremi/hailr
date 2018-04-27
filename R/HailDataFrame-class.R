@@ -10,7 +10,7 @@
 ##   split and joined with other tables. We should keep this as an
 ##   internal detail.
 
-setClass("is.hail.table.Table", contains="SparkObject")
+setClass("is.hail.table.Table", contains="JavaObject")
 
 ### FIXME: Should this inherit from DataFrame, with @listData
 ###        just prefilled with promises? Or just DataTable?
@@ -78,7 +78,7 @@ readHailDataFrame <- function(file) {
 }
 
 R_TYPE_TO_HAIL_TYPE <- c(logical="TBoolean", integer="TInt32",
-                         numeric="TFloat32", character="TString")
+                         numeric="TFloat64", character="TString")
 
 normColClasses <- function(colClasses) {
     if (length(colClasses) > 0L && is.null(names(colClasses)))
@@ -88,8 +88,7 @@ normColClasses <- function(colClasses) {
         stop("colClass ", paste(colClasses[is.na(colClasses)], collapse=", "),
              " not supported by Hail. Valid classes: ",
              paste0(R_TYPE_TO_HAIL_TYPE, collapse=", "), ".")
-    sc <- sparkConnection(hail_context())
-    pkg <- sc$is$hail$expr$types
+    pkg <- jvm(hail_context())$is$hail$expr$types
     lapply(colClasses, function(x) scala_object(pkg[[x]]))
 }
 

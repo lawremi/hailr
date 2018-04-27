@@ -15,11 +15,11 @@ Depends:
 Suggests: rappdirs
 Collate:
         JavaMethodTarget-class.R
-	SparkObject-class.R
+	JavaObject-class.R
 	HailContext-class.R
 	MatrixTable-class.R
 	HailExperiment-class.R
-	SparkConnection-class.R
+	JVM-class.R
 	HailContextManager-class.R
 	SparkDriverManager-class.R
 	HailHomeManager-class.R

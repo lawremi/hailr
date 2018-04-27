@@ -6,10 +6,10 @@
 ### The user will typically interact with this through HailExperiment.
 ###
 
-setClass("is.hail.variant.MatrixTable", contains="SparkObject")
+setClass("is.hail.variant.MatrixTable", contains="JavaObject")
 
 MatrixTable <- function(.impl) {
-    new("is.hail.variant.MatrixTable", SparkObject(.impl))
+    new("is.hail.variant.MatrixTable", JavaObject(.impl))
 }
 
 readMatrixTable <- function(file, drop.rows=FALSE, drop.cols=FALSE)
@@ -40,8 +40,8 @@ readMatrixTableFromVCF <- function(file, force=FALSE,
     if (is.na(genome)) {
         genome <- genomeFromVCFHeader(file)
     }
-    sc <- sparkConnection(hail_context())
-    genome <- sc$is$hail$variant$ReferenceGenome$getReference(genome)
+    jvm <- jvm(hail_context())
+    genome <- jvm$is$hail$variant$ReferenceGenome$getReference(genome)
     hail_context()$importVCF(file, force, force.bgz, ScalaOption(header.file),
                              ScalaOption(min.partitions), drop.samples,
                              ScalaSet(call.fields),

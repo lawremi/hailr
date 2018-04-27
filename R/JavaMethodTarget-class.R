@@ -2,8 +2,8 @@
 ### JavaMethodTarget objects
 ### -------------------------------------------------------------------------
 ###
-### Objects that are targeted by Java methods, i.e., SparkObject and
-### SparkConnection (static methods)
+### Objects that are targeted by Java methods, i.e., JavaObject and
+### JVM (static methods)
 ###
 
 setClass("JavaMethodTarget")
