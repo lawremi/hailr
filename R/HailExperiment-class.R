@@ -20,6 +20,10 @@ HailExperiment <- function(matrixTable) {
 ### Accessor methods.
 ###
 
+setMethod("colData", "HailExperiment", function(x) {
+    
+})
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### I/O
 ###

@@ -27,6 +27,14 @@ setMethod("callMethod", "spark_jobj",
           })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Object construction
+###
+
+setMethod("constructObject", "spark_connection", function(target, path, args) {
+    do.call(sparklyr::invoke_new, c(list(target, path), args))
+})
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### sparkContext() accessor
 ###
 

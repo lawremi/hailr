@@ -55,3 +55,4 @@ getFieldValue <- function(x, src, name) {
 
 pathToClassName <- function(x) paste(x, collapse=".")
 
+scala_object <- function(x) x$"MODULE$"()

@@ -1,9 +1,21 @@
+### =========================================================================
+### JavaPath objects
+### -------------------------------------------------------------------------
+###
+### Provides syntactic sugar for referencing Java classes and calling
+### methods by chaining with '$()'
+###
+
 setClass("JavaPath", contains="function")
 
 JavaPath <- function(target, ...) {
     path <- c(...)
     new("JavaPath", function(...) {
-        downcast(callMethod(target, path, list(...)))
+        args <- list(...)
+        if (identical(tail(path, 1L), "new"))
+            ans <- constructObject(target, path, args)
+        else ans <- callMethod(target, path, args)
+        downcast(ans)
     })
 }
 
@@ -17,12 +29,12 @@ path <- function(x) environment(x)$path
 target <- function(x) environment(x)$target
 
 setMethod("$", "JavaPath", function(x, name) {
-    path(x) <- c(path(x), name)
-    x
+    x[[name]]
 })
 
 setMethod("[[", "JavaPath", function (x, i, j, ...) {
     stopifnot(missing(j), missing(...))
     stopifnot(is.character(i), length(i) == 1L && !is.na(i))
-    getFieldValue(target(x), pathToClassName(path(x)), i)
+    path(x) <- c(path(x), i)
+    x
 })
