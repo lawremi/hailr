@@ -32,7 +32,8 @@ setClass("is.hail.expr.types.TString", contains="is.hail.expr.types.Type")
 setClass("is.hail.expr.types.TBinary", contains="is.hail.expr.types.Type")
 
 setClass("is.hail.expr.types.TContainer", contains="is.hail.expr.types.Type")
-setMethod("elementType", "TContainer", function(x) x$elementType())
+setMethod("elementType", "is.hail.expr.types.TContainer",
+          function(x) x$elementType())
 
 setClass("is.hail.expr.types.TIterable",
          contains="is.hail.expr.types.TContainer")
@@ -45,14 +46,20 @@ setClass("is.hail.expr.types.TAggregable",
 
 setClass("is.hail.expr.types.TDict", contains="is.hail.expr.types.TContainer")
 
-setClass("is.hail.expr.types.TBaseStruct", contains="is.hail.expr.types.Type")
-setGeneric("fieldTypes", function(x) standardGeneric("fieldTypes"))
-setMethod("fieldTypes", "TBaseStruct", function(x) x$fieldTypes())
+setClass("is.hail.expr.types.TBaseStruct",
+         contains=c("is.hail.expr.types.Type", "List"))
+
+setMethod("length", "is.hail.expr.types.TBaseStruct",
+          function(x) length(x$fieldTypes()))
+setMethod("as.list", "is.hail.expr.types.TBaseStruct",
+          function(x) x$fieldTypes())
 
 setClass("is.hail.expr.types.TStruct",
          contains="is.hail.expr.types.TBaseStruct")
-setMethod("fieldTypes", "TStruct",
-          function(x) setNames(callNextMethod(), x$fieldNames()))
+
+setMethod("names", "is.hail.expr.types.TStruct", function(x) x$fieldNames())
+setMethod("as.list", "is.hail.expr.types.TStruct",
+          function(x) setNames(callNextMethod(), names(x)))
 
 setClass("is.hail.expr.types.TTuple", contains="is.hail.expr.types.TBaseStruct")
 
@@ -64,6 +71,7 @@ representationType <- function(x) x$representation()
 setClass("is.hail.expr.types.TInterval",
          contains="is.hail.expr.types.ComplexType")
 
+## These types can be e.g. a TIntegral, or a TLocus (links)
 startType <- function(x) representationType(x)$field("start")$typ()
 endType <- function(x) representationType(x)$field("end")$typ()
 

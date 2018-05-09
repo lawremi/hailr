@@ -9,9 +9,11 @@
 
 setClass("ScalaOption", slots=c(value="ANY"))
 setClass("ScalaSet", slots=c(value="vector"))
+setClass("JavaArrayList", slots=c(value="vector"))
 
-ScalaOption <- function(x) new("ScalaOption", value=x)
-ScalaSet <- function(x) new("ScalaSet", value=x)
+ScalaOption <- function(x = NULL) new("ScalaOption", value=x)
+ScalaSet <- function(x = list()) new("ScalaSet", value=x)
+JavaArrayList <- function(x = list()) new("JavaArrayList", value=x)
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### toJava: conversion of R objects to corresponding Java objects
@@ -25,8 +27,13 @@ setMethod("toJava", "ScalaOption",
 
 setMethod("toJava", "ScalaSet",
           function(x, jvm)  {
-              arrayList <- jvm$is$hail$utils$arrayToArrayList(array(x@value))
+              arrayList <- toJava(JavaArrayList(x), jvm)
               toJava(jvm$is$hail$utils$arrayListToSet(arrayList))
+          })
+
+setMethod("toJava", "JavaArrayList",
+          function(x, jvm)  {
+              jvm$is$hail$utils$arrayToArrayList(array(x@value))
           })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

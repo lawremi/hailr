@@ -30,3 +30,5 @@ use_hail_context <- function(context) {
 hail_context <- function() {
     HailContextManager$getHailContext()
 }
+
+hail <- hail_context

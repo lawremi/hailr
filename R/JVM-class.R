@@ -29,3 +29,11 @@ setMethod("sparkContext", "JVM",
           function(x) JavaObject(sparkContext(impl(x))))
 
 setMethod("jvm", "JVM", function(x) x)
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Transmitting objects to the JVM
+###
+
+setMethod("transmit", c("ANY", "JVM"), function(x, dest, ...) {
+    copy(x, impl(jvm), ...)
+})

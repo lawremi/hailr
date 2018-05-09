@@ -1,8 +1,9 @@
 import(methods)
 import(BiocGenerics)
+import(S4Vectors)
+import(IRanges)
+import(GenomicRanges)
 import(SummarizedExperiment)
-
-importClassesFrom(sparklyr, spark_connection, spark_jobj)
 
 importFrom(utils, untar)
 importFrom(tools, file_path_sans_ext)

@@ -44,6 +44,14 @@ setMethod("jvm", "JavaObject", function(x) JVM(jvm(impl(x))))
 setMethod("toJava", "JavaObject", function(x, jvm) impl(x))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Transmitting objects to the JVM
+###
+
+setMethod("transmit", c("ANY", "JavaObject"), function(x, dest, ...) {
+    transmit(transmit(x, jvm(dest)), dest)
+})
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Utilities
 ###
 

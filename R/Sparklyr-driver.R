@@ -10,6 +10,9 @@
 ###        there is another viable backend, we are keeping it here.
 ###
 
+setOldClass("spark_connection")
+setOldClass("spark_jobj")
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Method invocation
 ###
@@ -49,10 +52,33 @@ setMethod("jvm", "spark_jobj",
           function(x) sparklyr::spark_connection(x))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### fromJava() coercion
+### Copying to/from Spark
 ###
 
 setMethod("fromJava", "spark_jobj", function(x) JavaObject(x))
+
+setMethod("transmit", c("ANY", "spark_connection"), function(x, dest) {
+    tbl <- dplyr::copy_to(dest, x, uuid("table"))
+    sparklyr::spark_dataframe(tbl)
+})
+
+setMethod("marshal", c("ANY", "spark_connection"), function(x, dest) {
+    as(x, "data.frame")
+})
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### dplyr integration
+###
+
+tbl.HailDataFrame <- function(src) {
+    id <- uuid("table")
+    src$createOrReplaceTempView(id)
+    dplyr::tbl(jvm(src), id)
+}
+
+tbl.JVM <- function(src, from) {
+    dplyr::tbl(impl(src), from)
+}
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Driver registration and selection

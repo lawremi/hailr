@@ -10,72 +10,57 @@
 ##   split and joined with other tables. We should keep this as an
 ##   internal detail.
 
-setClass("is.hail.table.Table", contains="JavaObject")
-
-### FIXME: Should this inherit from DataFrame, with @listData
-###        just prefilled with promises? Or just DataTable?
-###
-### DataTable has: NROW(), NCOL(), ROWNAMES(), dim(), dimnames(),
-###                head(), tail() [smart interpretation of subscripts],
-###                subset() [if evalqForSubset returned promise],
-###                transform()?, show()?
-###
-### Basically, if something could be done with DataFrame but not
-### DataTable, then we should just push it up to DataTable. But
-### prepolulation would have performance benefits.
-
-### The Python interface creates the equivalent of a list promise of
-### the columns. The list promise eagerly populates itself with
-### element promises. We will probably need a list (really a 'struct')
-### promise anyway, so we could reuse that here. But it is simpler to
-### create the promises on the fly, so the only motivation for eagerly
-### creating the promises is performance: many queries of the table
-### signature (needed to create a promise) would start to add up. But
-### we would only need to store the signatures (of metadata and table
-### data) to avoid interacting with Spark whenever creating a promise.
-
-### In rsolr, SolrFrame was a tuple of the SolrQuery and
-### SolrCore. Deferred evaluation was captured in the SolrQuery, and
-### eventually it materialized the query using the SolrCore. In this
-### case, the Hail table already defers, so there is no need for a
-### query, and really the table corresponds to the Solr core. Unlike
-### with Solr, however, it is easy to imagine operations across data
-### structures (cores) within the same Spark instance (server). But
-### anyway, a SolrCore had the reference to the core (URL) and a
-### downloaded schema, what Hail calls the 'signature'.
-
-setClass("HailDataFrame",
-         slots=c(hailTable="is.hail.table.Table",
-                 type="is.hail.expr.types.TableType"),
-         contains="DataTable")
+.HailDataFrame <- setClass("HailDataFrame",
+                           slots=c(hailTable="HailTable"),
+                           contains="DataFrame")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Constructor
 ###
 
-HailTable <- function(table) {
-    new("HailTable", table=table, type=table$tir$typ, "HailType")
+HailDataFrame <- function(hailTable) {
+    .HailDataFrame(DataFrame(promises(hailTable)), hailTable=hailTable)
 }
+
+setMethod("unmarshal", c("HailTable", "ANY"),
+          function(x, skeleton) HailDataFrame(x))
+
+setMethod("unmarshal", c("HailTable", "DataFrame"),
+          function(x, skeleton) {
+              df <- callNextMethod()
+              ncl <- lapply(skeleton, ncolsAsDF)
+              cnl <- split(colnames(df), PartitioningByWidth(ncl))
+              cols <- mapply(function(cn, target) {
+                  as(df[cn], class(target), strict=FALSE)
+              }, cnl, skeleton, SIMPLIFY=FALSE)
+              do.call(transform, c(list(df), cols))[names(cols)]
+          })
+
+setAs("ANY", "HailDataFrame", function(from) {
+    copy(as(from, "DataFrame"), hail())
+})
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessor methods.
 ###
 
-### TODO: colnames(), rownames(), dimnames(), nrow(), ncol()
-
-hailTable <- function(x) x@hailTable
-
-setMethod("nrow", "HailDataFrame", function(x) hailTable(x)$count())
-
-setMethod("ncol", "HailDataFrame", function(x) length())
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### I/O
 ###
 
 readHailDataFrame <- function(file) {
-    HailDataFrame(hail_context()$readTable(file))
+    HailDataFrame(readHailTable(file))
 }
+
+## Better way to get the Hail type for R objects:
+
+## - Create a "literal" promise in the HailContext
+##   - Requires R type => Hail promise type mapping
+## - Ask the promise for its Hail type
+##   - Typically this is just a query to e.g. the Hail table
+##   - Since we have a literal, there needs to be a default mapping from
+##     the promise type to the Hail type.
 
 R_TYPE_TO_HAIL_TYPE <- c(logical="TBoolean", integer="TInt32",
                          numeric="TFloat64", character="TString")
@@ -101,9 +86,9 @@ normColClasses <- function(colClasses) {
 readHailDataFrameFromText <- function(file, header = FALSE, sep = "",
                                       quote = "\"",
                                       na.strings = "NA",
-                                      colClasses = character(),
+                                      colClasses = character(0L),
                                       comment.char = "#",
-                                      key.names = character(),
+                                      key.names = character(0L),
                                       n.partitions = NULL)
 {
     stopifnot(is.logical(header), length(header) == 1L, !anyNA(header),
@@ -123,26 +108,37 @@ readHailDataFrameFromText <- function(file, header = FALSE, sep = "",
     impute <- TRUE
     if (identical(colClasses, "character")) {
         impute <- FALSE
-        colClasses <- character()
+        colClasses <- list()
+    } else {
+        colClasses <- normColClasses(colClasses)
     }
-    colClasses <- normColClasses(colClasses)
 
     if (comment.char == "") {
         comment.char <- NULL
     }
     if (quote == "") {
         quote <- NULL
-    } else {
-        quote <- jvm(hail_context())$java$lang$Character$new(quote)
     }
     if (sep == "") {
         sep <- "[ \\r\\n\\t]+"
     }
     
-    HailDataFrame(hail_context()$importTable(file, key.names,
-                                             as.integer(n.partitions),
-                                             colClasses,
-                                             ScalaOption(comment.char),
-                                             sep, na.strings, !header, impute,
-                                             quote))
+    HailDataFrame(readHailTableFromText(file, key.names,
+                                        n.partitions,
+                                        colClasses,
+                                        comment.char,
+                                        sep, na.strings, !header, impute,
+                                        quote))
 }
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Utilities
+###
+
+setGeneric("escapeColumn", function(x) standardGeneric("escapeColumn"))
+setMethod("escapeColumn", "List", function(x) escapeColumn(as.list(x)))
+setMethod("escapeColumn", "list", function(x) I(x))
+
+setGeneric("ncolsAsDF", function(x) standardGeneric("ncolsAsDF"))
+setMethod("ncolsAsDF", "ANY", function(x) ncol(as.data.frame(escapeColumn(x))))
+
