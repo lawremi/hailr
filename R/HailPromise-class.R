@@ -26,6 +26,8 @@ setClass("HailPromise",
 ## constructed from data type constraints. This makes S4 do the data
 ## type checking for us.
 
+## Should these promises have a reference to their Hail type? 
+
 setClass("HailBooleanPromise", contains="HailPromise")
 
 setClass("HailNumericPromise", contains="HailPromise")
@@ -40,8 +42,12 @@ setClass("HailContainerPromise", contains="HailPromise") # list-like
 
 setClass("HailStructPromise", contains="HailPromise") # high-level vector
 
-## Probably should be a GenomicRanges, but do not confuse with HailGRanges
+## These should be a GenomicRanges, but do not confuse with HailGRanges
+## Might need a common parent class
+
 setClass("HailIntervalPromise", contains="HailPromise")
+setClass("HailCallPromise", contains="HailPromise")
+setClass("HailLocusPromise", contains="HailPromise")
 
 setClass("HailAggregablePromise", contains="HailPromise") # a matrix
 
