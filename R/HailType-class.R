@@ -22,117 +22,214 @@
 setClass("is.hail.expr.types.Type", contains="JavaObject")
 setClass("HailType", slots=c(impl="is.hail.expr.types.Type"))
 
+setClass("HailTypeList", prototype=list(elementType="HailType"),
+         contains="SimpleList")
+
 ## Except for TBinary, these all refer to scalars (per row)
 
 setClass("is.hail.expr.types.TBoolean", contains="is.hail.expr.types.Type")
-setClass("HailBooleanType", slots=c(impl="is.hail.expr.types.TBoolean"),
-         contains="HailType")
+.TBoolean <- setClass("TBoolean", contains="HailType")
+setAs("is.hail.expr.types.TBoolean", "HailType",
+      function(from) .TBoolean())
+setAs("TBoolean", "is.hail.expr.types.Type",
+      function(from) .javaHailType(from))
 
 setClass("is.hail.expr.types.TNumeric", contains="is.hail.expr.types.Type")
-setClass("HailNumericType", slots=c(impl="is.hail.expr.types.TNumeric"),
-         contains="HailType")
+.HailNumericType <- setClass("HailNumericType", contains="HailType")
+setAs("is.hail.expr.types.TNumeric", "HailType",
+      function(from) .HailNumericType())
+setAs("HailNumericType", "is.hail.expr.types.Type",
+      function(from) .javaHailTypeForName("TFloat64"))
 
 setClass("is.hail.expr.types.TIntegral", contains="is.hail.expr.types.Type")
-setClass("HailIntegralType", slots=c(impl="is.hail.expr.types.TIntegral"),
-         contains="HailType")
+setClass("is.hail.expr.types.TInt32", contains="is.hail.expr.types.TIntegral")
+.HailIntegralType <- setClass("HailIntegralType", contains="HailType")
+.HailInt32Type <- setClass("HailInt32Type", contains="HailIntegralType")
+.HailInt64Type <- setClass("HailInt64Type", contains="HailIntegralType")
+
+setAs("is.hail.expr.types.TIntegral", "HailType",
+      function(from) .HailIntegralType())
+setAs("HailInt32Type", "is.hail.expr.types.Type",
+      function(from) .javaHailTypeForName("TInt32"))
 
 setClass("is.hail.expr.types.TString", contains="is.hail.expr.types.Type")
-setClass("HailStringType", slots=c(impl="is.hail.expr.types.TString"),
-         contains="HailType")
+.HailStringType <- setClass("HailStringType", contains="HailType")
+setAs("is.hail.expr.types.TString", "HailType",
+      function(from) .HailStringType())
+setAs("HailStringType", "is.hail.expr.types.Type",
+      function(from) .javaHailTypeForName("TString"))
 
 ## raw vector
 setClass("is.hail.expr.types.TBinary", contains="is.hail.expr.types.Type")
-setClass("HailBinaryType", slots=c(type="is.hail.expr.types.TBinary"),
-         contains="HailType")
+.HailBinaryType <- setClass("HailBinaryType", contains="HailType")
+setAs("is.hail.expr.types.TBinary", "HailType",
+      function(from) .HailBinaryType())
+setAs("HailBinaryType", "is.hail.expr.types.Type",
+      function(from) .javaHailTypeForName("TBinary"))
 
 setClass("is.hail.expr.types.TContainer", contains="is.hail.expr.types.Type")
-setClass("HailContainerType", slots=c(type="is.hail.expr.types.TContainer"),
-         contains=c("HailType", "List"))
-setMethod("elementType", "HailContainerType",
-          function(x) impl(x)$elementType())
+.HailContainerType <- setClass("HailContainerType",
+                               slots=c(elementType="HailType"),
+                               contains="HailType")
+setMethod("elementType", "HailContainerType", function(x) x@elementType)
+setAs("is.hail.expr.types.TContainer", "HailType",
+      function(from)
+          .HailContainerType(elementType=as(from$elementType(), "HailType")))
+
+.HailArrayType <- setClass("HailArrayType", contains="HailContainerType")
+
+setAs("HailContainerType", "is.hail.expr.types.Type",
+      function(from) {
+          etype <- as(elementType(from), "is.hail.expr.types.Type")
+          .javaHailTypeForName("TArray")$apply(etype, FALSE)
+      })
 
 ## Describes a matrix
 setClass("is.hail.expr.types.TAggregable",
          contains="is.hail.expr.types.TContainer")
-setClass("HailAggregableType", slots=c(type="is.hail.expr.types.TAggregable"),
-         contains="HailType")
+.HailAggregableType <- setClass("HailAggregableType",
+                                contains="HailContainerType")
+setAs("is.hail.expr.types.TAggregable", "HailType",
+      function(from) .HailAggregableType(callNextMethod()))
 
-setClass("is.hail.expr.types.TBaseStruct",
-         contains="is.hail.expr.types.Type")
-setClass("HailBaseStructType", slots=type="is.hail.expr.types.TBaseStruct",
-         contains="HailType")
+setClass("is.hail.expr.types.TBaseStruct", contains="is.hail.expr.types.Type")
+.HailBaseStructType <- setClass("HailBaseStructType",
+                                prototype=prototype(elementType="HailType"),
+                                contains=c("HailType", "HailTypeList"))
 
-setMethod("length", "HailBaseStructType",
-          function(x) length(impl(x)$fieldTypes()))
-setMethod("as.list", "HailBaseStructType",
-          function(x) lapply(impl(x)$fieldTypes(), HailType))
+setAs("is.hail.expr.types.TBaseStruct", "HailType", function(from) {
+    fieldTypes <- lapply(from$fieldTypes(), as, "HailType")
+    .HailBaseStructType(as(fieldTypes, "List"))
+})
 
 setClass("is.hail.expr.types.TStruct",
          contains="is.hail.expr.types.TBaseStruct")
-setClass("HailStructType", slots=c(type="is.hail.expr.types.TStruct"),
-         contains="HailBaseStructType")
-
-setMethod("names", "HailStructType", function(x) impl(x)$fieldNames())
+.HailStructType <- setClass("HailStructType", contains="HailBaseStructType")
+setAs("is.hail.expr.types.TStructType", "HailType",
+      function(from) {
+          ans <- .HailStructType(callNextMethod())
+          names(ans) <- from$fieldNames()
+          ans
+      })
 
 ## Better name might have been 'DecoratedType'; adds semantics
 setClass("is.hail.expr.types.ComplexType", contains="is.hail.expr.types.Type")
-setClass("HailComplexType", slots=c(type="is.hail.expr.types.ComplexType"),
-         contains="HailType")
+.HailComplexType <- setClass("HailComplexType",
+                             slots=c(representationType = "HailType"),
+                             contains="HailType")
+setAs("is.hail.expr.types.TComplexType", "HailType",
+      function(from) {
+          .HailComplexType(representationType=as(from$representation(),
+                                                 "HailType"))
+      })
 
-representationType <- function(x) HailType(impl(x)$representation())
+representationType <- function(x) x@representationType
 
 ## Basically a 'Ranges'
 setClass("is.hail.expr.types.TInterval",
          contains="is.hail.expr.types.ComplexType")
-setClass("HailIntervalType", slots=c(type="is.hail.expr.types.TInterval"),
-         contains="HailComplexType")
+.HailIntervalType <- setClass("HailIntervalType",
+                              slots=c(startType="HailType",
+                                      endType="HailType"),
+                              contains="HailComplexType")
+setAs("is.hail.expr.types.TInterval", "HailType",
+      function(from) {
+          startType <- as(from$representation()$field("start")$typ(),
+                          "HailType")
+          endType <- as(from$representation()$field("end")$typ(),
+                        "HailType")
+          .HailIntervalType(callNextMethod(),
+                            startType=startType,
+                            endType=endType)
+      })
 
 ## These types can be e.g. a TIntegral, or a TLocus (links)
-startType <- function(x) impl(representationType(x))$field("start")$typ()
-endType <- function(x) impl(representationType(x))$field("end")$typ()
+startType <- function(x) x@startType
+endType <- function(x) x@endType
 
 ## Variant call
 setClass("is.hail.expr.types.TCall", contains="is.hail.expr.types.ComplexType")
-setClass("HailCallType", slots=c(type="is.hail.expr.types.TCall"),
-         contains="HailComplexType")
+.HailCallType <- setClass("HailCallType", contains="HailComplexType")
+setAs("is.hail.expr.types.TCall", "HailType",
+      function(from) .HailCallType(callNextMethod()))
 
 ## Defined by a genome, chromosome, and position (like a SNP)
 setClass("is.hail.expr.types.TLocus", contains="is.hail.expr.types.ComplexType")
-setClass("HailLocusType", slots=c(type="is.hail.expr.types.TLocus"),
-         contains="HailComplexType")
+setClass("HailLocusType",  contains="HailComplexType")
+setAs("is.hail.expr.types.TLocus", "HailType",
+      function(from) .HailLocusType(callNextMethod()))
 
 setClass("is.hail.expr.types.TableType", contains="is.hail.expr.types.Type")
-setClass("HailTableType", slots=c(type="is.hail.expr.types.TableType"),
-         contains="HailType")
+.HailTableType <- setClass("HailTableType",
+                           slots=c(rowType="HailType", globalType="HailType",
+                                   keys="character"),
+                           contains="HailType")
 
-rowType <- function(x) HailType(impl(x)$rowType())
-globalType <- function(x) HailType(impl(x)$globalType())
-keys <- function(x) impl(x)$keys()
+setAs("is.hail.expr.types.TableType", "HailType",
+      function(from) {
+          rowType <- as(from$rowType(), "HailType")
+          globalType <- as(from$globalType(), "HailType")
+          keys <- from$keys()
+          .HailTableType(rowType=rowType, globalType=globalType, keys=keys)
+      })
+
+rowType <- function(x) x@rowType
+globalType <- function(x) x@globalType
+keys <- function(x) x@keys
 
 ## The schema of a MatrixTable
 setClass("is.hail.expr.types.MatrixType", contains="is.hail.expr.types.Type")
-setClass("HailMatrixType", slots=c(type="is.hail.expr.types.MatrixType"),
-         contains="HailType")
+.HailMatrixType <- setClass("HailMatrixType", contains="HailType")
+setAs("is.hail.expr.types.MatrixType", "HailType",
+      function(from) {
+          colTableType <- as(from$colsTableType(), "HailType")
+          rowTableType <- as(from$rowsTableType(), "HailType")
+          entryType <- as(from$entryType(), "HailType")
+          rowPartitionKey <- from$rowPartitionKey()
+          .HailMatrixType(colTableType=colTableType, rowTableType=rowTableType,
+                          entryType=entryType, rowPartitionKey=rowPartitionKey)
+      })
 
-colTableType <- function(x) HailType(impl(x)$colsTableType())
-rowTableType <- function(x) HailType(impl(x)$rowsTableType())
-entryType <- function(x) HailType(impl(x)$entryType())
-rowPartitionKey <- function(x) impl(x)$rowPartitionKey()
+colTableType <- function(x) x@colTableType
+rowTableType <- function(x) x@rowTableType
+entryType <- function(x) x@entryType
+rowPartitionKey <- function(x) x@rowPartitionKey
 
 ## Hail supports registering functions for use in the expression runtime.
 ## We should be able to call these dynamically at least. Ideally,
 ## we could define functions using R code.
 setClass("is.hail.expr.types.TFunction", contains="is.hail.expr.types.Type")
-setClass("HailFunctionType", slots=c(type="is.hail.expr.types.TFunction"),
-         contains="HailType")
+.HailFunctionType <- setClass("HailFunctionType",
+                              slots=c(paramTypes="HailTypeList",
+                                      returnType="HailType"),
+                              contains="HailType")
+setAs("is.hail.expr.types.TFunction", "HailType", function(from) {
+    paramTypes <- lapply(from@$paramTypes(), as, "HailType")
+    returnType <- as(from$returnType(), "HailType")
+    .HailFunctionType(paramTypes=paramTypes, returnType=returnType)
+})
 
-paramTypes <- function(x) HailType(impl(x)$paramTypes())
-returnType <- function(x) HailType(impl(x)$returnType())
+paramTypes <- function(x) x@paramTypes
+returnType <- function(x) x@returnType
 
 setClass("is.hail.expr.types.TVariable", contains="is.hail.expr.types.Type")
-setClass("HailVariableType", slots=c(type="is.hail.expr.types.TVariable"),
-         contains="HailType")
+.HailVariableType <- setClass("HailVariableType", contains="HailType")
+setAs("is.hail.expr.types.TVariable", "HailType",
+      function(from) .HailVariableType())
 
 setClass("is.hail.expr.types.TVoid", contains="is.hail.expr.types.Type")
-setClass("HailVoidType", slots=c(type="is.hail.expr.types.TVoid"),
-         contains="HailType")
+.HailVoidType <- setClass("HailVoidType", contains="HailType")
+setAs("is.hail.expr.types.TVoid", "HailType",
+      function(from) .HailVoidType())
+
+javaHailType <- function(x) {
+    .javaHailTypeForName(.javaHailTypeName(x))
+}
+
+javaHailTypeName <- function(x) {
+    paste0("T", sub("Hail(.*?)Type", "\\1", class(x)))
+}
+
+javaHailTypeForName <- function(typeName) {
+    scala_object(jvm(hail_context())$is$hail$expr$types[[typeName]])
+}
