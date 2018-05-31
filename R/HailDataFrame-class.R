@@ -20,20 +20,21 @@
 
 setGeneric("symbolClass", function(x) standardGeneric("symbolClass"))
 
-setMethod("symbolClass", "RowType", function(x) "ColumnSymbol")
-setMethod("symbolClass", "GlobalType", function(x) "GlobalSymbol")
+setMethod("symbolClass", "RowAxis", function(x) "ColumnSymbol")
+setMethod("symbolClass", "GlobalAxis", function(x) "GlobalSymbol")
 
-promises <- function(table, type) {
-    syms <- lapply(names(type), as, symbolClass(type))
+promises <- function(table, axis) {
+    type <- typeForAxis(hailType(table), axis)
+    syms <- lapply(names(type), as, symbolClass(axis))
     mapply(Promise, type, syms, MoreArgs=list(context=table))
 }
 
 rowPromises <- function(table) {
-    promises(table, rowType(hailType(table)))
+    promises(table, ROW_AXIS)
 }
 
 globalPromises <- function(table) {
-    promises(table, globalType(hailType(table)))
+    promises(table, GLOBAL_AXIS)
 }
 
 HailDataFrame <- function(table) {

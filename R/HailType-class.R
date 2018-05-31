@@ -82,15 +82,18 @@ setClass("is.hail.expr.types.TLocus", contains="is.hail.expr.types.ComplexType")
 setClass("TLocus",  contains="TComplex")
 
 setClass("is.hail.expr.types.TableType", contains="is.hail.expr.types.Type")
-setClass("RowType", contains="TStruct")
-setClass("GlobalType", contains="TStruct")
-setClass("TableType", slots=c(rowType="RowType", globalType="GlobalType",
+setClass("TableType", slots=c(rowType="TStruct", globalType="TStruct",
                               keys="character"),
          contains="HailType")
 
 ## The schema of a MatrixTable
 setClass("is.hail.expr.types.MatrixType", contains="is.hail.expr.types.Type")
-setClass("MatrixType", contains="HailType")
+setClass("MatrixType",
+         slots=c(colTableType="TableType",
+                 rowTableType="TableType",
+                 entryType="TStruct",
+                 rowPartitionKey="character"),
+         contains="HailType")
 
 ## Hail supports registering functions for use in the expression runtime.
 ## We should be able to call these dynamically at least. Ideally,
@@ -138,6 +141,12 @@ rowPartitionKey <- function(x) x@rowPartitionKey
 
 paramTypes <- function(x) x@paramTypes
 returnType <- function(x) x@returnType
+
+setGeneric("typeForAxis", function(x, axis) standardGeneric("typeForAxis"))
+
+setMethod("typeForAxis", c("TableType", "RowAxis"), function(x, axis) x@rowType)
+setMethod("typeForAxis", c("TableType", "GlobalAxis"),
+          function(x, axis) x@globalType)
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Coercion (between Java and R representations)
