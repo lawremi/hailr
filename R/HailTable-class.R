@@ -41,11 +41,7 @@ setMethod("unmarshal", c("is.hail.table.Table", "ANY"),
 ### Accessors
 ###
 
-hailType <- function(x) x$impl$tir$typ
-
-promises <- function(x) {
-    lapply(colnames(x), promise, x)
-}
+tableType <- function(x) as(x$tir$typ, "HailType")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### I/O
@@ -67,7 +63,7 @@ readHailTableFromText <- function(file,
 {
     if (!is.null(quote))
         quote <- jvm(hail_context())$java$lang$Character$new(quote)
-    
+    types <- lapply(types, as, "is.hail.expr.types.Type")
     hail_context()$importTable(file, keyNames, as.integer(nPartitions),
                                types, ScalaOption(comment), separator, missing,
                                noHeader, impute, quote, skipBlankLines)

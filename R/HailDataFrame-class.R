@@ -18,8 +18,28 @@
 ### Constructor
 ###
 
-HailDataFrame <- function(hailTable) {
-    .HailDataFrame(DataFrame(promises(hailTable)), hailTable=hailTable)
+setGeneric("symbolClass", function(x) standardGeneric("symbolClass"))
+
+setMethod("symbolClass", "RowType", function(x) "ColumnSymbol")
+setMethod("symbolClass", "GlobalType", function(x) "GlobalSymbol")
+
+promises <- function(table, type) {
+    syms <- lapply(names(type), as, symbolClass(type))
+    mapply(Promise, type, syms, MoreArgs=list(context=table))
+}
+
+rowPromises <- function(table) {
+    promises(table, rowType(hailType(table)))
+}
+
+globalPromises <- function(table) {
+    promises(table, globalType(hailType(table)))
+}
+
+HailDataFrame <- function(table) {
+    .HailDataFrame(DataFrame(rowPromises(table)),
+                   table=table,
+                   metadata=globalPromises(table))
 }
 
 setMethod("unmarshal", c("HailTable", "ANY"),
@@ -31,7 +51,7 @@ setMethod("unmarshal", c("HailTable", "DataFrame"),
               ncl <- lapply(skeleton, ncolsAsDF)
               cnl <- split(colnames(df), PartitioningByWidth(ncl))
               cols <- mapply(function(cn, target) {
-                  as(df[cn], class(target), strict=FALSE)
+                  as(df[cn], promiseClass(target), strict=FALSE)
               }, cnl, skeleton, SIMPLIFY=FALSE)
               do.call(transform, c(list(df), cols))[names(cols)]
           })
@@ -44,7 +64,6 @@ setAs("ANY", "HailDataFrame", function(from) {
 ### Accessor methods.
 ###
 
-
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### I/O
 ###
@@ -53,28 +72,10 @@ readHailDataFrame <- function(file) {
     HailDataFrame(readHailTable(file))
 }
 
-## Better way to get the Hail type for R objects:
-
-## - Create a "literal" promise in the HailContext
-##   - Requires R type => Hail promise type mapping
-## - Ask the promise for its Hail type
-##   - Typically this is just a query to e.g. the Hail table
-##   - Since we have a literal, there needs to be a default mapping from
-##     the promise type to the Hail type.
-
-R_TYPE_TO_HAIL_TYPE <- c(logical="TBoolean", integer="TInt32",
-                         numeric="TFloat64", character="TString")
-
 normColClasses <- function(colClasses) {
     if (length(colClasses) > 0L && is.null(names(colClasses)))
         stop("'colClasses' must be named and not contain NAs")
-    colClasses[] <- R_TYPE_TO_HAIL_TYPE[colClasses]
-    if (anyNA(colClasses))
-        stop("colClass ", paste(colClasses[is.na(colClasses)], collapse=", "),
-             " not supported by Hail. Valid classes: ",
-             paste0(R_TYPE_TO_HAIL_TYPE, collapse=", "), ".")
-    pkg <- jvm(hail_context())$is$hail$expr$types
-    lapply(colClasses, function(x) scala_object(pkg[[x]]))
+    lapply(colClasses, function(cc) hailType(new(cc)))
 }
 
 ## Major differences:
