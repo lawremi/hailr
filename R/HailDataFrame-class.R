@@ -18,23 +18,12 @@
 ### Constructor
 ###
 
-setGeneric("symbolClass", function(x) standardGeneric("symbolClass"))
-
-setMethod("symbolClass", "RowAxis", function(x) "ColumnSymbol")
-setMethod("symbolClass", "GlobalAxis", function(x) "GlobalSymbol")
-
-promises <- function(table, axis) {
-    type <- typeForAxis(hailType(table), axis)
-    syms <- lapply(names(type), as, symbolClass(axis))
-    mapply(Promise, type, syms, MoreArgs=list(context=table))
-}
-
 rowPromises <- function(table) {
-    promises(table, ROW_AXIS)
+    promises(rowContext(table))
 }
 
 globalPromises <- function(table) {
-    promises(table, GLOBAL_AXIS)
+    promises(globalContext(table))
 }
 
 HailDataFrame <- function(table) {
@@ -73,7 +62,7 @@ readHailDataFrame <- function(file) {
     HailDataFrame(readHailTable(file))
 }
 
-normColClasses <- function(colClasses) {
+colClassesToHailTypes <- function(colClasses) {
     if (length(colClasses) > 0L && is.null(names(colClasses)))
         stop("'colClasses' must be named and not contain NAs")
     lapply(colClasses, function(cc) hailType(new(cc)))
@@ -110,9 +99,9 @@ readHailDataFrameFromText <- function(file, header = FALSE, sep = "",
     impute <- TRUE
     if (identical(colClasses, "character")) {
         impute <- FALSE
-        colClasses <- list()
+        types <- list()
     } else {
-        colClasses <- normColClasses(colClasses)
+        types <- colClassesToHailTypes(colClasses)
     }
 
     if (comment.char == "") {
@@ -127,7 +116,7 @@ readHailDataFrameFromText <- function(file, header = FALSE, sep = "",
     
     HailDataFrame(readHailTableFromText(file, key.names,
                                         n.partitions,
-                                        colClasses,
+                                        types,
                                         comment.char,
                                         sep, na.strings, !header, impute,
                                         quote))

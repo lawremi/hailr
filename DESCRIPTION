@@ -14,15 +14,21 @@ Depends:
     methods
 Suggests: sparklyr, dplyr, rappdirs
 Collate:
+	copy.R
         JavaMethodTarget-class.R
 	JVM-class.R
 	JavaObject-class.R
-	types.R
+	Expression-class.R
+	Context-class.R
+	Promise-class.R
+	HailType-class.R
+	HailExpression-class.R
 	HailContext-class.R
 	HailPromise-class.R
+	HailTable-class.R
 	HailDataFrame-class.R
 	HailGRanges-class.R
-	MatrixTable-class.R
+	HailMatrixTable-class.R
 	HailExperiment-class.R
 	HailContextManager-class.R
 	SparkDriverManager-class.R

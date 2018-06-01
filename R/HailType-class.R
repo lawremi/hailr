@@ -65,21 +65,21 @@ setClass("TTuple", contains="TBaseStruct")
 
 ## Better name might have been 'DecoratedType'; adds semantics
 setClass("is.hail.expr.types.ComplexType", contains="is.hail.expr.types.Type")
-setClass("TComplex", slots=c(representationType="HailType"),
+setClass("ComplexType", slots=c(representationType="HailType"),
          contains="HailType")
 
 ## Basically a 'Ranges'
 setClass("is.hail.expr.types.TInterval",
          contains="is.hail.expr.types.ComplexType")
-setClass("TInterval", slots=c(pointType="HailType"), contains="TComplex")
+setClass("TInterval", slots=c(pointType="HailType"), contains="ComplexType")
 
 ## Variant call
 setClass("is.hail.expr.types.TCall", contains="is.hail.expr.types.ComplexType")
-setClass("TCall", contains="TComplex")
+setClass("TCall", contains="ComplexType")
 
 ## Defined by a genome, chromosome, and position (like a SNP)
 setClass("is.hail.expr.types.TLocus", contains="is.hail.expr.types.ComplexType")
-setClass("TLocus",  contains="TComplex")
+setClass("TLocus",  contains="ComplexType")
 
 setClass("is.hail.expr.types.TableType", contains="is.hail.expr.types.Type")
 setClass("TableType", slots=c(rowType="TStruct", globalType="TStruct",
@@ -142,12 +142,6 @@ rowPartitionKey <- function(x) x@rowPartitionKey
 paramTypes <- function(x) x@paramTypes
 returnType <- function(x) x@returnType
 
-setGeneric("typeForAxis", function(x, axis) standardGeneric("typeForAxis"))
-
-setMethod("typeForAxis", c("TableType", "RowAxis"), function(x, axis) x@rowType)
-setMethod("typeForAxis", c("TableType", "GlobalAxis"),
-          function(x, axis) x@globalType)
-
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Coercion (between Java and R representations)
 ###
@@ -156,12 +150,12 @@ setAs("is.hail.expr.types.Type", "HailType", function(from) {
     new(sub("^is.hail.expr.types.", "", class(from)))
 })
 
-javaHailType <- function(x) {
-    scala_object(jvm(hail_context())$is$hail$expr$types[[class(x)]])
+javaHailType <- function(x, jvm) {
+    scala_object(jvm$is$hail$expr$types[[class(x)]])
 }
 
-setAs("HailType", "is.hail.expr.types.Type", function(from) {
-    javaHailType(from)
+setMethod("toJava", "HailType", function(x, jvm) {
+    javaHailType(x, jvm)
 })
 
 setAs("is.hail.expr.types.TContainer", "HailType",
@@ -169,9 +163,9 @@ setAs("is.hail.expr.types.TContainer", "HailType",
           initialize(callNextMethod(),
                      elementType=as(from$elementType(), "HailType")))
 
-setAs("TContainer", "is.hail.expr.types.Type",
-      function(from) {
-          etype <- as(elementType(from), "is.hail.expr.types.Type")
+setMethod("toJava", "TContainer",
+      function(x, jvm) {
+          etype <- toJava(elementType(x), jvm)
           callNextMethod()$apply(etype, FALSE)
       })
 
@@ -180,12 +174,12 @@ setAs("is.hail.expr.types.TBaseStruct", "HailType", function(from) {
     initialize(callNextMethod(), fieldTypes)
 })
 
-setAs("TBaseStruct", "is.hail.expr.types.Type",
-      function(from) {
-          fieldTypes <- lapply(from, as, "is.hail.expr.types.Type")
+setMethod("toJava", "TBaseStruct",
+      function(x, jvm) {
+          fieldTypes <- lapply(x, toJava, jvm)
           obj <- callNextMethod()
-          if (!is.null(names(from)))
-              obj$apply(JavaArrayList(names(from)), JavaArrayList(fieldTypes),
+          if (!is.null(names(x)))
+              obj$apply(JavaArrayList(names(x)), JavaArrayList(fieldTypes),
                         FALSE)
           else obj$apply(JavaArrayList(fieldTypes), FALSE)
       })
@@ -197,21 +191,21 @@ setAs("is.hail.expr.types.TStruct", "HailType",
           ans
       })
 
-setAs("is.hail.expr.types.TComplexType", "HailType",
+setAs("is.hail.expr.types.ComplexType", "HailType",
       function(from) {
           representationType <- as(from$representation(), "HailType")
           initialize(callNextMethod(), representationType=representationType)
       })
 
-setAs("TInterval", "is.hail.expr.types.Type",
-      function(from) {
-          pointType <- as(pointType(from), "is.hail.expr.types.Type")
+setMethod("toJava", "TInterval",
+      function(x, jvm) {
+          pointType <- toJava(pointType(x), jvm)
           callNextMethod()$apply(pointType, FALSE)
       })
 
 setAs("is.hail.expr.types.TInterval", "HailType",
       function(from) {
-          pointType <- as(from$$pointType(), "HailType")
+          pointType <- as(from$pointType(), "HailType")
           initialize(callNextMethod(), pointType=pointType)
       })
 
@@ -224,24 +218,24 @@ setAs("is.hail.expr.types.TableType", "HailType",
                      keys=keys)
       })
 
-setAs("TableType", "is.hail.expr.types.Type",
-      function(from) {
-          rowType <- as(rowType(from), "is.hail.expr.types.Type")
-          keys <- keys(from)
-          globalType <- as(globalType(from), "is.hail.expr.types.Type")
+setMethod("toJava", "TableType",
+      function(x, jvm) {
+          rowType <- toJava(rowType(x), jvm)
+          keys <- keys(x)
+          globalType <- toJava(globalType(x), jvm)
           callNextMethod()$apply(rowType, keys, globalType)
       })
 
 setAs("is.hail.expr.types.TFunction", "HailType", function(from) {
-    paramTypes <- lapply(from@$paramTypes(), as, "HailType")
+    paramTypes <- lapply(from$paramTypes(), as, "HailType")
     returnType <- as(from$returnType(), "HailType")
     initialize(callNextMethod(), paramTypes=paramTypes, returnType=returnType)
 })
 
-setAs("TFunction", "is.hail.expr.types.Type",
-      function(from) {
-          paramTypes <- lapply(paramTypes(from), as, "is.hail.expr.types.Type")
-          returnType <- as(returnType(from), "is.hail.expr.types.Type")
+setMethod("toJava", "TFunction",
+      function(x, jvm) {
+          paramTypes <- lapply(paramTypes(x), toJava, jvm)
+          returnType <- toJava(returnType(x), jvm)
           callNextMethod()$apply(paramTypes, returnType)
       })
 
@@ -256,18 +250,18 @@ setAs("is.hail.expr.types.MatrixType", "HailType",
                      entryType=entryType, rowPartitionKey=rowPartitionKey)
       })
 
-setAs("MatrixType", "is.hail.expr.types.Type",
-      function(from) {
-          colTableType <- as(colTableType(from), "is.hail.expr.types.Type")
+setMethod("toJava", "MatrixType",
+      function(x, jvm) {
+          colTableType <- toJava(colTableType(x), jvm)
           globalType <- globalType(colTableType)
           colKey <- keys(colTableType)
           colType <- rowType(colTableType)
-          rowPartitionKey <- rowPartitionKey(from)
-          rowTableType <- as(rowTableType(from), "is.hail.expr.types.Type")
+          rowPartitionKey <- rowPartitionKey(x)
+          rowTableType <- toJava(rowTableType(x), jvm)
           rowKey <- keys(rowTableType)
           rvRowType <- rowType(rowTableType)
-          entryType <- as(entryType(from), "is.hail.expr.types.Type")
-          mt <- scala_object(jvm(hail_context())is$hail$expr$types$MatrixType)
+          entryType <- toJava(entryType(x), jvm)
+          mt <- scala_object(jvm(hail_context())$is$hail$expr$types$MatrixType)
           rvRowType[[mt$entriesIdentifier()]] <- entryType
           callNextMethod()$apply(globalType, colKey, colType,
                                  rowPartitionKey, rowKey, rvRowType)
