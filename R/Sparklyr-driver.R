@@ -34,7 +34,7 @@ setMethod("callMethod", "spark_jobj",
 ###
 
 setMethod("constructObject", "spark_connection", function(target, path, args) {
-    do.call(sparklyr::invoke_new, c(list(target, path), args))
+    do.call(sparklyr::invoke_new, c(list(target, pathToClassName(path)), args))
 })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -88,6 +88,8 @@ register_spark_driver("sparklyr", function(jars, config=spark_config(), ...) {
     if (!requireNamespace("sparklyr", quietly=TRUE))
         stop("The sparklyr package is required to use the sparklyr backend")
     config[["sparklyr.jars.default"]] <- jars
-    sparklyr::spark_connect("local", config=config, ...)
+    sparklyr::spark_connect(spark_master(), spark_home(),
+                            version = spark_version(),
+                            config=config, ...)
 })
 use_spark_driver("sparklyr")

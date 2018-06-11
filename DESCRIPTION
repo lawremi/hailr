@@ -32,6 +32,7 @@ Collate:
 	HailExperiment-class.R
 	HailContextManager-class.R
 	SparkDriverManager-class.R
+	SparkConfig-class.R
 	HailConfig-class.R
 	JavaPath-class.R
 	install-utils.R
