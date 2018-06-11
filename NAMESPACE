@@ -8,7 +8,10 @@ import(SummarizedExperiment)
 importFrom(utils, untar)
 importFrom(tools, file_path_sans_ext)
 
+export(hail_jar, hail_config)
+
 export(use_spark_driver, use_hail_home, use_hail_context, HailContext,
        install_hail)
 
-export(readHailExperiment, readHailExperimentFromVCF)
+export(readHailExperiment, readHailExperimentFromVCF,
+       readHailDataFrame, readHailDataFrameFromText)
