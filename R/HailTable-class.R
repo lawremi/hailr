@@ -21,11 +21,13 @@ setClass("org.apache.spark.sql.Dataset", contains="JavaObject")
 .HailTable <- setRefClass("HailTable",
                           fields=c(impl="is.hail.table.Table"))
 
-.HailTableRows <- setClass("HailTableRows", slots=c(table="HailTable"),
-                           contains="Context")
+.HailTableRowContext <- setClass("HailTableRowContext",
+                                 slots=c(table="HailTable"),
+                                 contains="Context")
 
-.HailTableGlobals <- setClass("HailTableGlobals", slots=c(table="HailTable"),
-                              contains="Context")
+.HailTableGlobalContext <- setClass("HailTableGlobalContext",
+                                    slots=c(table="HailTable"),
+                                    contains="Context")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Construction
@@ -44,11 +46,11 @@ setMethod("transmit", c("org.apache.spark.sql.Dataset", "is.hail.HailContext"),
 setMethod("unmarshal", c("is.hail.table.Table", "ANY"),
           function(x, skeleton) unmarshal(HailTable(x), skeleton))
 
-HailTableRows <- function(table) {
+HailTableRowContext <- function(table) {
     .HailTableRows(table=table)
 }
 
-HailTableGlobals <- function(table) {
+HailTableGlobalContext <- function(table) {
     .HailTableGlobals(table=table)
 }
 
@@ -57,9 +59,19 @@ HailTableGlobals <- function(table) {
 ###
 
 setMethod("hailType", "HailTable", function(x) as(x$tir$typ, "HailType"))
-setMethod("hailType", "HailTableRows", function(x) rowType(hailType(x@table)))
-setMethod("hailType", "HailTableGlobals",
+setMethod("hailType", "HailTableRowContext",
+          function(x) rowType(hailType(x@table)))
+setMethod("hailType", "HailTableGlobalContext",
           function(x) globalType(hailType(x@table)))
+
+.HailTable$methods(
+    rows = function(table) {
+        promises(HailTableRowContext(table))
+    },
+    globals = function(table) {
+        promises(HailTableGlobalContext(table))
+    }
+)
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### I/O

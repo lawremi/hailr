@@ -18,18 +18,10 @@
 ### Constructor
 ###
 
-rowPromises <- function(table) {
-    promises(rowContext(table))
-}
-
-globalPromises <- function(table) {
-    promises(globalContext(table))
-}
-
 HailDataFrame <- function(table) {
-    .HailDataFrame(DataFrame(rowPromises(table)),
+    .HailDataFrame(DataFrame(table$rows()),
                    table=table,
-                   metadata=globalPromises(table))
+                   metadata=table$globals())
 }
 
 setMethod("unmarshal", c("HailTable", "ANY"),
