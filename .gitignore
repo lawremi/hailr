@@ -1,4 +1,3 @@
 logs
-/R/.Rhistory
-/vignettes/.Rhistory
-/vignettes/hail.log
+hail.log
+.Rhistory

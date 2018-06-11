@@ -1,9 +1,9 @@
 ### =========================================================================
-### Management of the Hail home directory global
+### Management of the Hail configuration, inc. home directory global
 ### -------------------------------------------------------------------------
 ###
 
-HailHomeManager_getHome <- function(.self) {
+HailConfig_getHome <- function(.self) {
     home <- .self$home
     if (is.null(home)) {
         home <- .self$setHome(default_hail_home())
@@ -11,7 +11,7 @@ HailHomeManager_getHome <- function(.self) {
     home
 }
 
-HailHomeManager_setHome <- function(.self, home) {
+HailConfig_setHome <- function(.self, home) {
     if (!is.null(home)) {
         stopifnot(is.character(home),
                   length(home) == 1L && !is.na(home))
@@ -22,21 +22,21 @@ HailHomeManager_setHome <- function(.self, home) {
     invisible(home)
 }
 
-HailHomeManager <- 
-    setRefClass("HailHomeManager", fields=c(home="character_OR_NULL"),
-                methods=list(getHome=HailHomeManager_getHome,
-                             setHome=HailHomeManager_setHome))()
+HailConfig <- 
+    setRefClass("HailConfig", fields=c(home="character_OR_NULL"),
+                methods=list(getHome=HailConfig_getHome,
+                             setHome=HailConfig_setHome))()
 
 default_hail_home <- function() {
     select_hail(installed_hails())$home
 }
 
 use_hail_home <- function(home) {
-    HailHomeManager$setHome(home)
+    HailConfig$setHome(home)
 }
 
 hail_home <- function() {
-    HailHomeManager$getHome()
+    HailConfig$getHome()
 }
 
 ensure_hail_home <- function() {
