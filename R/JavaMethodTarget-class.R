@@ -17,7 +17,7 @@ setMethod("$", "JavaMethodTarget", function(x, name) x[[name]])
 setMethod("[[", "JavaMethodTarget", function (x, i, j, ...) {
     stopifnot(missing(j), missing(...))
     stopifnot(is.character(i), length(i) == 1L && !is.na(i))
-    JavaPath(x, name)
+    JavaPath(x, i)
 })
 
 setGeneric("callMethod",

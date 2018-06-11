@@ -13,9 +13,11 @@ JavaPath <- function(target, ...) {
     new("JavaPath", function(...) {
         args <- list(...)
         if (identical(tail(path, 1L), "new"))
-            ans <- constructObject(target, path, args)
+            ans <- constructObject(target, head(path, -1L), args)
         else ans <- callMethod(target, path, args)
-        downcast(ans)
+        if (is(ans, "JavaObject"))
+            ans <- downcast(ans)
+        ans
     })
 }
 

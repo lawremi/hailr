@@ -20,6 +20,14 @@ JVM <- function(.impl, ...) {
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### JavaObject factory method
+###
+
+setMethod("constructObject", "JVM", function(target, path, args) {
+    constructObject(impl(target), path, args)
+})
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessors
 ###
 

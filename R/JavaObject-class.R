@@ -33,12 +33,6 @@ JavaObject <- function(impl) {
 
 impl <- function(x) x@impl
 
-setMethod("[[", "JavaObject", function (x, i, j, ...) {
-    stopifnot(missing(j), missing(...))
-    stopifnot(is.character(i) && length(i) == 1L && !is.na(i))
-    x$getClass()$getField(i)$get(x)
-})
-
 setMethod("jvm", "JavaObject", function(x) JVM(jvm(impl(x))))
 
 setMethod("toJava", "JavaObject", function(x, jvm) impl(x))
