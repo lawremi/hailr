@@ -16,7 +16,7 @@ HailConnection <- function(jars = character(), config = list(), ...) {
     jars <- c(hail_jar(), jars)
     conf <- hail_config()
     conf[names(config)] <- config
-    SparkConnection(jars=jars, config=conf, ...)
+    JVM(jars=jars, config=conf, ...)
 }
 
 HailContext <- function(context = sparkContext(HailConnection()),
