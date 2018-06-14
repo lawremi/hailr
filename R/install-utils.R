@@ -10,10 +10,12 @@ install_spark <- function(version) {
 available_hails <- function() {
     rbind(data.frame(version       = "0.1",
                      build         = "20613ed50c74",
-                     spark_version = c("2.0.2", "2.1.0")),
+                     spark_version = c("2.0.2", "2.1.0"),
+                     stringsAsFactors=FALSE),
           data.frame(version       = "devel",
                      build         = "fdf130b2f5d4",
-                     spark_version = c("2.2.0")))
+                     spark_version = c("2.2.0"),
+                     stringsAsFactors=FALSE))
 }
 
 hail_filename <- function(version, build, spark_version) {
@@ -35,6 +37,30 @@ download_hail <- function(hail) {
     dest_path
 }
 
+query_spark_version <- function() {
+    bin <- file.path(spark_home(), "bin", "spark-submit")
+    cmd <- paste(bin, "--version 2>&1")
+    output <- system(cmd, intern=TRUE)
+    sub(".*version ", "", grep("version", output, value=TRUE)[1L])
+}
+
+select_spark_versions <- function() {
+    spark_versions <- spark_version()
+    if (is.null(spark_versions)) {
+        sparks <- installed_sparks()
+        spark_versions <- sparks$spark
+        if (nzchar(spark_home())) {
+            m <- match(spark_home(), sparks$dir)
+            if (!is.na(m)) {
+                spark_versions <- spark_versions[m]
+            } else {
+                spark_versions <- query_spark_version()
+            }
+        }
+    }
+    spark_versions
+}
+
 select_hail <- function(hails, version) {
     if (!missing(version)) {
         stopifnot(is.character(version),
@@ -44,8 +70,7 @@ select_hail <- function(hails, version) {
     if (nrow(hails) == 0L) {
         return(NULL)
     }
-    sparks <- installed_sparks()
-    valid_sparks <- intersect(sparks$spark, hails$spark_version)
+    valid_sparks <- intersect(select_spark_versions(), hails$spark_version)
     if (length(valid_sparks) == 0L) {
         hail <- tail(hails, 1L)
         message("No supported Spark version installed for Hail version '",
@@ -55,6 +80,8 @@ select_hail <- function(hails, version) {
     }
     ans <- tail(hails[hails$spark_version %in% valid_sparks,], 1L)
     if (nrow(ans) > 0L) {
+        if (spark_master() == "local")
+            use_local_spark(ans$spark_version)
         ans
     }
 }
@@ -82,7 +109,7 @@ prompt_to_install_hail <- function() {
 }
 
 install_hail <- function(version) {
-    if (!requireNamespace("sparklyr"))
+    if (!requireNamespace("sparklyr", quietly=TRUE))
         stop(strwrap(paste(
             "The sparklyr package must be installed to install hail",
             "Please install sparklyr or install Hail manually.")))
@@ -92,7 +119,7 @@ install_hail <- function(version) {
 }
 
 hail_dir <- function() {
-    if (!requireNamespace("rappdirs"))
+    if (!requireNamespace("rappdirs", quietly=TRUE))
         stop(strwrap(paste("The rappdirs package must be installed to use ",
                            "the automatically installed Hail.\nPlease ",
                            "install rappdirs or use a system Hail.")))
