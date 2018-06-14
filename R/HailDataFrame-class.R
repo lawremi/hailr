@@ -71,22 +71,21 @@ readHailDataFrameFromText <- function(file, header = FALSE, sep = "",
                                       na.strings = "NA",
                                       colClasses = character(0L),
                                       comment.char = "#",
+                                      blank.lines.skip = TRUE,
                                       key.names = character(0L),
                                       n.partitions = NULL)
 {
-    stopifnot(is.logical(header), length(header) == 1L, !anyNA(header),
-              is.character(sep), length(sep) == 1L, !anyNA(sep),
-              is.character(quote), length(quote) == 1L, !anyNA(quote),
+    stopifnot(isSingleString(file),
+              isTRUEorFALSE(header),
+              isSingleString(sep),
+              isSingleString(quote),
               nchar(quote) == 1L,
-              is.character(na.strings), length(na.strings) == 1L,
-              !anyNA(na.strings),
+              isSingleString(na.strings),
               is.character(colClasses), !anyNA(colClasses),
-              is.character(comment.char), length(comment.char) == 1L,
-              !anyNA(comment.char),
+              isSingleString(comment.char),
+              isTRUEorFALSE(blank.lines.skip),
               is.character(key.names), !anyNA(key.names),
-              !anyNA(n.partitions),
-              is.null(n.partitions) ||
-                  (is.numeric(n.partitions) && length(n.partitions) == 1L))
+              is.null(n.partitions) || isSingleNumber(n.partitions))
 
     impute <- TRUE
     if (identical(colClasses, "character")) {
@@ -97,7 +96,7 @@ readHailDataFrameFromText <- function(file, header = FALSE, sep = "",
     }
 
     if (comment.char == "") {
-        comment.char <- NULL
+        comment.char <- character(0L)
     }
     if (quote == "") {
         quote <- NULL
@@ -111,7 +110,7 @@ readHailDataFrameFromText <- function(file, header = FALSE, sep = "",
                                         types,
                                         comment.char,
                                         sep, na.strings, !header, impute,
-                                        quote))
+                                        quote, blank.lines.skip))
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

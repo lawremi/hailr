@@ -91,8 +91,27 @@ readHailTableFromText <- function(file,
                                   quote = NULL,
                                   skipBlankLines = FALSE)
 {
-    hail_context()$importTable(file, keyNames, as.integer(nPartitions),
-                               types, ScalaOption(comment), separator, missing,
-                               noHeader, impute, JavaCharacter(quote),
-                               skipBlankLines)
+    stopifnot(isSingleString(file),
+              isTRUEorFALSE(noHeader),
+              isSingleString(separator),
+              is.null(quote) || isSingleString(quote),
+              nchar(quote) == 1L,
+              isSingleString(missing),
+              is.list(types), all(vapply(types, is, logical(1L), "HailType")),
+              is.character(comment), !anyNA(comment),
+              is.character(keyNames), !anyNA(keyNames),
+              isTRUEorFALSE(skipBlankLines),
+              is.null(nPartitions) || isSingleNumber(nPartitions),
+              isTRUEorFALSE(impute))
+
+    if (!is.null(nPartitions))
+        nPartitions <- as.integer(nPartitions)
+
+    ### FIXME: 'comment' will be an ArrayList<String> in next Hail
+    hail_context()$importTable(JavaArrayList(file), JavaArrayList(keyNames),
+                               nPartitions, JavaHashMap(types),
+                               comment, separator, missing,
+                               noHeader, impute, quote
+                               # FIXME: next version: skipBlankLines
+                               )
 }

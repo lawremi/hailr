@@ -10,17 +10,16 @@
 setClass("ScalaOption", slots=c(value="ANY"))
 setClass("ScalaSet", slots=c(value="vector"))
 setClass("JavaArrayList", slots=c(value="vector"))
-setClass("JavaCharacter", slots=c(value="character_OR_NULL"),
+setClass("JavaHashMap", slots=c(value="vector"),
          validity=function(object) {
-             if (!is.null(object@value) &&
-                     (length(object@value) != 1L || nchar(object@value) != 1L))
-                 "Java Character must be NULL or a single length-one string"
+             if (length(object@value) > 0L && is.null(names(object@value)))
+                 "vector/list requires names to become a java.util.HashMap"
          })
 
 ScalaOption <- function(x = NULL) new("ScalaOption", value=x)
 ScalaSet <- function(x = list()) new("ScalaSet", value=x)
-JavaArrayList <- function(x = list()) new("JavaArrayList", value=x)
-JavaCharacter <- function(x = NULL) new("JavaCharacter", value=x)
+JavaList <- JavaArrayList <- function(x = list()) new("JavaArrayList", value=x)
+JavaMap <- JavaHashMap <- function(x = list()) new("JavaHashMap", value=x)
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### toJava: conversion of R objects to corresponding Java objects
@@ -40,14 +39,12 @@ setMethod("toJava", "ScalaSet",
 
 setMethod("toJava", "JavaArrayList",
           function(x, jvm)  {
-              jvm$is$hail$utils$arrayToArrayList(array(x@value))
+              toJava(jvm$is$hail$utils$arrayToArrayList(array(x@value)))
           })
 
-setMethod("toJava", "JavaCharacter",
+setMethod("toJava", "JavaHashMap",
           function(x, jvm)  {
-              if (is.null(x@value))
-                  NULL
-              else jvm$java$lang$Character$new(x@value)
+              list2env(as.list(x@value))
           })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
