@@ -113,10 +113,11 @@ readHailTableFromText <- function(file,
         nPartitions <- as.integer(nPartitions)
 
     ### FIXME: 'comment' will be an ArrayList<String> in next Hail
-    hail_context()$importTable(JavaArrayList(file), JavaArrayList(keyNames),
-                               nPartitions, JavaHashMap(types),
-                               comment, separator, missing,
-                               noHeader, impute, quote
-                               # FIXME: next version: skipBlankLines
-                               )
+    HailTable(hail_context()$importTable(JavaArrayList(file),
+                                         JavaArrayList(keyNames),
+                                         nPartitions, JavaHashMap(types),
+                                         comment, separator, missing,
+                                         noHeader, impute, quote
+                                         # FIXME: next version: skipBlankLines
+                                         ))
 }
