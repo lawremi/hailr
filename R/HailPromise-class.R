@@ -13,14 +13,22 @@ setClass("HailPromise",
 setClass("BooleanPromise", contains="HailPromise")
 
 setClass("NumericPromise", contains="HailPromise")
+setClass("TFloat32Promise", contains="NumericPromise")
+setClass("TFloat64Promise", contains="NumericPromise")
 
 setClass("IntegralPromise", contains="HailPromise")
+setClass("Int32Promise", contains="IntegralPromise")
+setClass("Int64Promise", contains="IntegralPromise")
 
 setClass("StringPromise", contains="HailPromise")
 
 setClass("BinaryPromise", contains="HailPromise")
 
 setClass("ContainerPromise", contains="HailPromise") # list-like
+setClass("ArrayPromise", contains="ContainerPromise")
+setClass("SetPromise", contains="ContainerPromise")
+setClass("DictPromise", contains="ContainerPromise")
+setClass("AggregablePromise", contains="ContainerPromise") # a matrix
 
 setClass("StructPromise", contains="HailPromise") # high-level vector
 
@@ -30,8 +38,6 @@ setClass("StructPromise", contains="HailPromise") # high-level vector
 setClass("IntervalPromise", contains="HailPromise")
 setClass("CallPromise", contains="HailPromise")
 setClass("LocusPromise", contains="HailPromise")
-
-setClass("AggregablePromise", contains="HailPromise") # a matrix
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Construction.
