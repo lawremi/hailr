@@ -26,6 +26,7 @@ setMethod("callMethod", "spark_connection",
 
 setMethod("callMethod", "spark_jobj",
           function(target, path, args) {
+              stopifnot(isSingleString(path))
               do.call(sparklyr::invoke, c(list(target, path), args))
           })
 
