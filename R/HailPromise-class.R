@@ -49,5 +49,6 @@ promises <- function(context) {
 }
 
 Promise <- function(type, expr, context) {
-    new(promiseClass(type), expr=expr, context=context)
+    new(promiseClass(type), expr=as(expr, expressionClass(context)),
+        context=context)
 }

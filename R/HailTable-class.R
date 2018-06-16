@@ -21,13 +21,15 @@ setClass("org.apache.spark.sql.Dataset", contains="JavaObject")
 .HailTable <- setRefClass("HailTable",
                           fields=c(impl="is.hail.table.Table"))
 
+setClass("HailContext", contains="Context")
+
 .HailTableRowContext <- setClass("HailTableRowContext",
                                  slots=c(table="HailTable"),
-                                 contains="Context")
+                                 contains="HailContext")
 
 .HailTableGlobalContext <- setClass("HailTableGlobalContext",
                                     slots=c(table="HailTable"),
-                                    contains="Context")
+                                    contains="HailContext")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Construction
@@ -47,29 +49,32 @@ setMethod("unmarshal", c("is.hail.table.Table", "ANY"),
           function(x, skeleton) unmarshal(HailTable(x), skeleton))
 
 HailTableRowContext <- function(table) {
-    .HailTableRows(table=table)
+    .HailTableRowContext(table=table)
 }
 
 HailTableGlobalContext <- function(table) {
-    .HailTableGlobals(table=table)
+    .HailTableGlobalContext(table=table)
 }
+
+setMethod("expressionClass", "HailContext", function(x) "HailExpression")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessors
 ###
 
-setMethod("hailType", "HailTable", function(x) as(x$tir$typ, "HailType"))
+setMethod("hailType", "HailTable",
+          function(x) as(x$impl$tir()$typ(), "HailType"))
 setMethod("hailType", "HailTableRowContext",
           function(x) rowType(hailType(x@table)))
 setMethod("hailType", "HailTableGlobalContext",
           function(x) globalType(hailType(x@table)))
 
 .HailTable$methods(
-    rows = function(table) {
-        promises(HailTableRowContext(table))
+    rows = function() {
+        promises(HailTableRowContext(.self))
     },
-    globals = function(table) {
-        promises(HailTableGlobalContext(table))
+    globals = function() {
+        promises(HailTableGlobalContext(.self))
     }
 )
 

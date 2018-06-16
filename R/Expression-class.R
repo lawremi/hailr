@@ -27,3 +27,9 @@ setClass("SimpleSymbol",
                  "'name' must be a single, non-NA string"
          })
 setIs("SimpleSymbol", "Symbol")
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Factory
+###
+
+setGeneric("expressionClass", function(x) standardGeneric("expressionClass"))
