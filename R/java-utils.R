@@ -55,21 +55,11 @@ setGeneric("fromJava", function(x) standardGeneric("fromJava"))
 
 setMethod("fromJava", "ANY", function(x) x)
 
+setMethod("fromJava", "list", function(x) lapply(x, fromJava))
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Helpers
 ###
-
-## Could be made generic if needed, as a backend might not require
-## direct reflection.
-getFieldValue <- function(x, src, name) {
-    if (is.character(src)) {
-        class <- x$java$lang$Class$forName(src)
-        src <- NULL
-    } else {
-        class <- src$getClass()
-    }
-    class$getField(name)$get(src)
-}
 
 pathToClassName <- function(x) paste(x, collapse=".")
 

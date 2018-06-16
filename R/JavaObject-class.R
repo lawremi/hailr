@@ -49,15 +49,15 @@ setMethod("transmit", c("ANY", "JavaObject"), function(x, dest) {
 ### Utilities
 ###
 
-java_superclasses <- function(x) {
+find_first_ancestor <- function(x, candidates) {
     ### NOTE: cannot use '$' here, since it downcasts and infinitely recurses
     class <- callMethod(x, "getClass")
-    supers <- character()
     while(!is.null(class)) {
-        supers <- c(supers, callMethod(class, "getName"))
+        name <- callMethod(class, "getName")
+        if (name %in% candidates)
+            return(name)
         class <- callMethod(class, "getSuperclass")
     }
-    supers
 }
 
 S4_subclasses <- function(x) {
@@ -65,10 +65,16 @@ S4_subclasses <- function(x) {
     vapply(getClass(class(x))@subclasses, slot, character(1L), "subClass")
 }
 
-downcast <- function(x) {
+setGeneric("downcast", function(x) x)
+
+setMethod("downcast", "JavaObject",  function(x) {
     candidates <- c(class(x), S4_subclasses(x))
-    deepest <- which.min(match(candidates, java_superclasses(x)))
-    if (length(deepest) > 0L)
-        as(x, candidates[deepest])
+    deepest <- find_first_ancestor(x, candidates)
+    if (!is.null(deepest))
+        as(x, deepest)
     else x
-}
+})
+
+setMethod("downcast", "list", function(x) {
+    lapply(x, downcast)
+})

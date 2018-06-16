@@ -15,9 +15,7 @@ JavaPath <- function(target, ...) {
         if (identical(tail(path, 1L), "new"))
             ans <- constructObject(target, head(path, -1L), args)
         else ans <- callMethod(target, path, args)
-        if (is(ans, "JavaObject"))
-            ans <- downcast(ans)
-        ans
+        downcast(ans)
     })
 }
 
