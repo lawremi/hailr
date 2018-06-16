@@ -170,7 +170,7 @@ setMethod("toJava", "TContainer",
       })
 
 setAs("is.hail.expr.types.TBaseStruct", "HailType", function(from) {
-    fieldTypes <- as(lapply(from$fieldTypes(), as, "HailType"), "List")
+    fieldTypes <- as(lapply(from$types(), as, "HailType"), "List")
     initialize(callNextMethod(), fieldTypes)
 })
 
@@ -213,7 +213,8 @@ setAs("is.hail.expr.types.TableType", "HailType",
       function(from) {
           rowType <- as(from$rowType(), "HailType")
           globalType <- as(from$globalType(), "HailType")
-          keys <- from$keys()
+          ## FIXME: as.character() needed due to limitation in sparklyr (#1558)
+          keys <- as.character(from$key())
           initialize(callNextMethod(), rowType=rowType, globalType=globalType,
                      keys=keys)
       })
