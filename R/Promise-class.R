@@ -16,7 +16,20 @@ setClass("SimplePromise",
 ### Accessors
 ###
 
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Accessors
+###
+
+expr <- function(x) x@expr
+`expr<-` <- function(x, value) {
+    x@expr <- value
+    x
+}
 context <- function(x) x@context
+`context<-` <- function(x, value) {
+    x@context <- value
+    x
+}
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Fulfillment
