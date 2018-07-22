@@ -15,11 +15,8 @@ copy <- function(x, dest) {
     unmarshal(remote, x)
 }
 
-setGeneric("marshal", function(x, dest) standardGeneric("marshal"))
+setGeneric("marshal", function(x, dest) x)
 
 setGeneric("transmit", function(x, dest) standardGeneric("transmit"))
 
-setGeneric("unmarshal", function(x, skeleton) standardGeneric("unmarshal"))
-
-
-
+setGeneric("unmarshal", function(x, skeleton) x)
