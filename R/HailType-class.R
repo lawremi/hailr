@@ -262,7 +262,7 @@ setMethod("toJava", "MatrixType",
           rowKey <- keys(rowTableType)
           rvRowType <- rowType(rowTableType)
           entryType <- toJava(entryType(x), jvm)
-          mt <- scala_object(jvm(hail_context())$is$hail$expr$types$MatrixType)
+          mt <- scala_object(jvm$is$hail$expr$types$MatrixType)
           rvRowType[[mt$entriesIdentifier()]] <- entryType
           callNextMethod()$apply(globalType, colKey, colType,
                                  rowPartitionKey, rowKey, rvRowType)

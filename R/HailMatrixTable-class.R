@@ -35,24 +35,13 @@ genomeFromVCFHeader <- function(file) {
     }
 }
 
-readHailMatrixTableFromVCF <- function(file, force=FALSE,
-                                       force.bgz=FALSE, header.file=NULL,
-                                       min.partitions=NULL,
-                                       drop.samples=FALSE,
-                                       call.fields=character(),
-                                       genome=NA_character_,
-                                       contig.recoding=NULL)
+readHailMatrixTableFromVCF <- function(file, genome=NA_character_)
 {
-    stopifnot(is.character(genome), length(genome) == 1L)
+    stopifnot(isSingleStringOrNA(genome))
     if (is.na(genome)) {
         genome <- genomeFromVCFHeader(file)
     }
-    jvm <- jvm(hail_context())
-    genome <- jvm$is$hail$variant$ReferenceGenome$getReference(genome)
-    hail_context()$importVCF(file, force, force.bgz, ScalaOption(header.file),
-                             ScalaOption(min.partitions), drop.samples,
-                             ScalaSet(call.fields),
-                             ScalaOption(genome), ScalaOption(contig.recoding))
+    hail_context()$importVCF(file, genome)
 }
 
 ## TODO: readMatrixTableFromPlink()
