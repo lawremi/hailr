@@ -58,7 +58,6 @@ setClass("is.hail.expr.types.TTuple", contains="is.hail.expr.types.TBaseStruct")
 setClass("is.hail.expr.types.TStruct",
          contains="is.hail.expr.types.TBaseStruct")
 setClass("TBaseStruct",
-         prototype=prototype(elementType="HailType"),
          contains=c("HailType", "HailTypeList"))
 setClass("TStruct", contains="TBaseStruct")
 setClass("TTuple", contains="TBaseStruct")
