@@ -17,23 +17,23 @@ setClass("HailTypeList", prototype=list(elementType="HailType"),
          contains="SimpleList")
 
 setClass("is.hail.expr.types.TBoolean", contains="is.hail.expr.types.Type")
-.TBoolean <- setClass("TBoolean", contains="HailType")
+TBOOLEAN <- setClass("TBoolean", contains="HailType")()
 
 setClass("is.hail.expr.types.TNumeric", contains="is.hail.expr.types.Type")
 setClass("is.hail.expr.types.TFloat32", contains="is.hail.expr.types.TNumeric")
 setClass("is.hail.expr.types.TFloat64", contains="is.hail.expr.types.TNumeric")
 setClass("TNumeric", contains="HailType")
 setClass("TFloat32", contains="TNumeric")
-.TFloat64 <- setClass("TFloat64", contains="TNumeric")
+TFLOAT64 <- setClass("TFloat64", contains="TNumeric")()
 
 setClass("is.hail.expr.types.TIntegral", contains="is.hail.expr.types.Type")
 setClass("is.hail.expr.types.TInt32", contains="is.hail.expr.types.TIntegral")
 setClass("TIntegral", contains="HailType")
-.TInt32 <- setClass("TInt32", contains="TIntegral")
+TINT32 <- setClass("TInt32", contains="TIntegral")()
 setClass("TInt64", contains="TIntegral")
 
 setClass("is.hail.expr.types.TString", contains="is.hail.expr.types.Type")
-.TString <- setClass("TString", contains="HailType")
+TSTRING <- setClass("TString", contains="HailType")()
 
 ## raw vector
 setClass("is.hail.expr.types.TBinary", contains="is.hail.expr.types.Type")
@@ -113,10 +113,18 @@ setClass("TVoid", contains="HailType")
 
 setGeneric("hailType", function(x) standardGeneric("hailType"))
 
-setMethod("hailType", "logical", function(x) .TBoolean())
-setMethod("hailType", "numeric", function(x) .TFloat64())
-setMethod("hailType", "integer", function(x) .TInt32())
-setMethod("hailType", "character", function(x) .TString())
+setMethod("hailType", "logical", function(x) TBOOLEAN)
+setMethod("hailType", "numeric", function(x) TFLOAT64)
+setMethod("hailType", "integer", function(x) TINT32)
+setMethod("hailType", "character", function(x) TSTRING)
+
+## Compare to rsolr 'solrMode()'
+setGeneric("vectorMode", function(x) standardGeneric("vectorMode"))
+
+setMethod("vectorMode", "TBoolean", function(x) "logical")
+setMethod("vectorMode", "TFloat64", function(x) "numeric")
+setMethod("vectorMode", "TInt32", function(x) "integer")
+setMethod("vectorMode", "TString", function(x) "character")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessors
