@@ -7,19 +7,21 @@
 ### Constructors for complicated Java/Scala things
 ###
 
-setClass("ScalaOption", slots=c(value="ANY"))
-setClass("ScalaSet", slots=c(value="vector"))
-setClass("JavaArrayList", slots=c(value="vector"))
-setClass("JavaHashMap", slots=c(value="vector"),
-         validity=function(object) {
-             if (length(object@value) > 0L && is.null(names(object@value)))
-                 "vector/list requires names to become a java.util.HashMap"
-         })
+.ScalaOption <- setClass("ScalaOption", slots=c(value="ANY"))
+.ScalaSet <- setClass("ScalaSet", slots=c(value="vector"))
+.JavaArrayList <- setClass("JavaArrayList", slots=c(value="vector"))
+.JavaHashMap <-
+    setClass("JavaHashMap", slots=c(value="vector"),
+             validity=function(object) {
+                 if (length(object@value) > 0L &&
+                         is.null(names(object@value)))
+                     "vector/list requires names to become a java.util.HashMap"
+             })
 
-ScalaOption <- function(x = NULL) new("ScalaOption", value=x)
-ScalaSet <- function(x = list()) new("ScalaSet", value=x)
-JavaList <- JavaArrayList <- function(x = list()) new("JavaArrayList", value=x)
-JavaMap <- JavaHashMap <- function(x = list()) new("JavaHashMap", value=x)
+ScalaOption <- function(x = NULL) .ScalaOption(value=x)
+ScalaSet <- function(x = list()) .ScalaSet(value=x)
+JavaList <- JavaArrayList <- function(x = list()) .JavaArrayList(value=x)
+JavaMap <- JavaHashMap <- function(x = list()) .JavaHashMap(value=x)
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### toJava: conversion of R objects to corresponding Java objects
