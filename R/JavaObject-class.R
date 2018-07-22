@@ -45,6 +45,10 @@ setMethod("toJava", "JavaObject", function(x, jvm) impl(x))
 ### Transmitting objects to the JVM
 ###
 
+setMethod("marshal", c("ANY", "JavaObject"), function(x, dest) {
+    marshal(x, jvm(dest))
+})
+
 setMethod("transmit", c("ANY", "JavaObject"), function(x, dest) {
     transmit(transmit(x, jvm(dest)), dest)
 })

@@ -42,6 +42,10 @@ setMethod("jvm", "JVM", function(x) x)
 ### Transmitting objects to the JVM
 ###
 
+setMethod("marshal", c("ANY", "JVM"), function(x, dest) {
+    marshal(x, impl(dest))
+})
+
 setMethod("transmit", c("ANY", "JVM"), function(x, dest) {
-    copy(x, impl(jvm))
+    downcast(JavaObject(copy(x, impl(dest))))
 })
