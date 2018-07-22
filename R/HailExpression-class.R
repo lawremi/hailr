@@ -18,8 +18,12 @@ setClass("HailExpression", contains=c("Expression", "VIRTUAL"))
 
 .HailSelect <- setClass("HailSelect",
                         slots=c(container="HailExpression",
-                                element="HailSymbol"),
-                        contains="HailExpression")
+                                element="character"),
+                        contains="HailExpression",
+                        validity=function(object) {
+                            if (!isSingleStrong(object@element))
+                                "@element must be a single, non-NA string"
+                        })
 
 setClass("HailExpressionList",
          prototype=prototype(elementType="HailExpression"),
