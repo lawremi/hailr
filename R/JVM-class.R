@@ -6,7 +6,7 @@
 ### Java methods, and return Spark contexts.
 ###
 
-setClass("JVM", slots=c(impl="ANY"), contains="JavaMethodTarget")
+.JVM <- setClass("JVM", slots=c(impl="ANY"), contains="JavaMethodTarget")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Constructor
@@ -16,7 +16,7 @@ JVM <- function(.impl, ...) {
     if (missing(.impl)) {
         .impl <- SparkDriverConnection(...)
     }
-    new("JVM", impl=.impl)
+    .JVM(impl=.impl)
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

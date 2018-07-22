@@ -6,11 +6,11 @@
 ### methods by chaining with '$()'
 ###
 
-setClass("JavaPath", contains="function")
+.JavaPath <- setClass("JavaPath", contains="function")
 
 JavaPath <- function(target, ...) {
     path <- c(...)
-    new("JavaPath", function(...) {
+    .JavaPath(function(...) {
         args <- list(...)
         if (identical(tail(path, 1L), "new"))
             ans <- constructObject(target, head(path, -1L), args)

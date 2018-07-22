@@ -7,18 +7,19 @@
 ### entries, i.e., assay matrices, and access to metadata tables.
 ###
 
-setClass("is.hail.variant.MatrixTable", contains="JavaObject")
+.is.hail.variant.MatrixTable <- setClass("is.hail.variant.MatrixTable",
+                                         contains="JavaObject")
 
 .HailMatrixTable <- setRefClass("HailMatrixTable",
                                 fields=c(impl="is.hail.variant.MatrixTable"))
 
 HailMatrixTable <- function(.impl) {
-    new("is.hail.variant.MatrixTable", JavaObject(.impl))
+    .is.hail.variant.MatrixTable(JavaObject(.impl))
 }
 
 readMatrixTable <- function(file, drop.rows=FALSE, drop.cols=FALSE)
 {
-    hail_context()$read(file, drop.rows, drop.cols)
+    hail_context()$readMatrixTable(file, drop.rows, drop.cols)
 }
 
 genomeFromVCFHeader <- function(file) {

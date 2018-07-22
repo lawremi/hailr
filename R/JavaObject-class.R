@@ -8,23 +8,27 @@
 ### based on its driver.
 ###
 
-setClass("JavaObject", slots = c(impl="ANY"), contains="JavaMethodTarget",
-         validity = function(object) {
-             class <- tryCatch(jvm(object)$Class$forName(class(object)),
-                               error=function(e) { })
-             if (!is.null(class) && !class$isAssignableFrom(object$getClass()))
-             {
-                 paste0("class '", class$getName(), "' not assignable from '",
-                        object$getClass()$getName(), "'")
-             }
-         })
+.JavaObject <-
+    setClass("JavaObject", slots = c(impl="ANY"),
+             contains="JavaMethodTarget",
+             validity = function(object) {
+                 if (class(object) != "JavaObject") {
+                     class <- jvm(object)$Class$forName(class(object))
+                     if (!class$isAssignableFrom(object$getClass()))
+                     {
+                         paste0("class '", class$getName(),
+                                "' not assignable from '",
+                                object$getClass()$getName(), "'")
+                     }
+                 }
+             })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Constructor
 ###
 
 JavaObject <- function(impl) {
-    new("JavaObject", impl=impl)
+    .JavaObject(impl=impl)
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

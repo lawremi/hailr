@@ -5,15 +5,16 @@
 ### Represents a Hail VariantDataset as a SummarizedExperiment derivative.
 ###
 
-setClass("HailExperiment", slots=c(matrixTable="HailMatrixTable"),
-         contains="SummarizedExperiment")
+.HailExperiment <- setClass("HailExperiment",
+                            slots=c(matrixTable="HailMatrixTable"),
+                            contains="SummarizedExperiment")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Constructor
 ###
 
 HailExperiment <- function(matrixTable) {
-    new("HailExperiment", matrixTable=matrixTable)
+    .HailExperiment(matrixTable=matrixTable)
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
