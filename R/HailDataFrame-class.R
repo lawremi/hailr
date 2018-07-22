@@ -11,7 +11,7 @@
 ##   internal detail.
 
 .HailDataFrame <- setClass("HailDataFrame",
-                           slots=c(hailTable="HailTable"),
+                           slots=c(table="HailTable"),
                            contains="DataFrame")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -19,9 +19,9 @@
 ###
 
 HailDataFrame <- function(table) {
-    .HailDataFrame(DataFrame(table$rows()),
+    .HailDataFrame(DataFrame(as.list(table$row())),
                    table=table,
-                   metadata=table$globals())
+                   metadata=as.list(table$globals()))
 }
 
 setMethod("unmarshal", c("HailTable", "ANY"),
@@ -45,6 +45,14 @@ setAs("ANY", "HailDataFrame", function(from) {
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessor methods.
 ###
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Summarizing
+###
+
+setMethod("head", "HailDataFrame", function(x, n) {
+    HailDataFrame(impl(x)$head(n))
+})
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### I/O

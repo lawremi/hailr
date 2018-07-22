@@ -21,15 +21,14 @@ setClass("org.apache.spark.sql.Dataset", contains="JavaObject")
 .HailTable <- setRefClass("HailTable",
                           fields=c(impl="is.hail.table.Table"))
 
-setClass("HailContext", contains="Context")
+setClass("HailTableContext", slots=c(hailTable="HailTable"),
+         contains="HailExpressionContext")
 
 .HailTableRowContext <- setClass("HailTableRowContext",
-                                 slots=c(table="HailTable"),
-                                 contains="HailContext")
+                                 contains="HailTableContext")
 
 .HailTableGlobalContext <- setClass("HailTableGlobalContext",
-                                    slots=c(table="HailTable"),
-                                    contains="HailContext")
+                                    contains="HailTableContext")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Construction
@@ -37,6 +36,11 @@ setClass("HailContext", contains="Context")
 
 HailTable <- function(impl) {
     .HailTable(impl=impl)
+}
+
+RangeHailTable <- function(hc, n, n_partitions=NULL) {
+    HailTable(jvm(hc)$is$hail$table$Table$range(hc, n,
+                                                JavaOption(n_partitions)))
 }
 
 setMethod("transmit", c("org.apache.spark.sql.Dataset", "is.hail.HailContext"),
@@ -48,15 +52,13 @@ setMethod("transmit", c("org.apache.spark.sql.Dataset", "is.hail.HailContext"),
 setMethod("unmarshal", c("is.hail.table.Table", "ANY"),
           function(x, skeleton) unmarshal(HailTable(x), skeleton))
 
-HailTableRowContext <- function(table) {
-    .HailTableRowContext(table=table)
+HailTableRowContext <- function(hailTable) {
+    .HailTableRowContext(hailTable=hailTable)
 }
 
-HailTableGlobalContext <- function(table) {
-    .HailTableGlobalContext(table=table)
+HailTableGlobalContext <- function(hailTable) {
+    .HailTableGlobalContext(hailTable=hailTable)
 }
-
-setMethod("expressionClass", "HailContext", function(x) "HailExpression")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessors
@@ -64,25 +66,86 @@ setMethod("expressionClass", "HailContext", function(x) "HailExpression")
 
 setMethod("hailType", "HailTable",
           function(x) as(x$impl$tir()$typ(), "HailType"))
-setMethod("hailType", "HailTableRowContext",
-          function(x) rowType(hailType(x@table)))
-setMethod("hailType", "HailTableGlobalContext",
-          function(x) globalType(hailType(x@table)))
 
 .HailTable$methods(
-    rows = function() {
-        promises(HailTableRowContext(.self))
+    row = function() {
+        Promise(rowType(hailType(.self)), "row",
+                HailTableRowContext(.self))
     },
     globals = function() {
-        promises(HailTableGlobalContext(.self))
+        Promise(globalType(hailType(.self)), "global",
+                HailTableGlobalContext(.self))
+    },
+    select = function(...) {
+        expr <- HailStructDeclaration(...)
+        HailTable(impl(.self)$select(as.character(expr)))
+    },
+    selectGlobals = function(...) {
+        expr <- HailStructDeclaration(...)
+        HailTable(impl(.self)$selectGlobal(as.character(expr)))
+    },
+    joinGlobals = function(right) {
+        left <- .self
+        utils <- jvm(impl(left))$is$hail$utils
+        HailTable(utils$joinGlobals(impl(left), impl(right), "x"))
+    },
+    globalTable = function() {
+        .self$joinGlobals(RangeHailTable(.self$hailContext(), 1L, 1L))
+    },
+    head = function(n) {
+        HailTable(impl(.self)$head(n))
+    },
+    collect = function() {
+        fromJSON(impl(.self)$collectJSON())
+    },
+    hailContext = function() {
+        impl(.self)$hc()
     }
 )
+
+## Could record nrow upon construction to avoid repeated Java calls
+setMethod("nrow", "HailTable", function(x) impl(x)$count())
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Evaluation
+###
+
+setGeneric("toHailTable",
+           function(context, expr) standardGeneric("toHailTable"),
+           signature="context")
+
+setMethod("toHailTable", "HailTableRowContext", function(context, expr) {
+    context(envir)$select(x = expr)$selectGlobals()
+})
+
+setMethod("toHailTable", "HailTableGlobalContext", function(context, expr) {
+    table <- context(envir)$selectGlobals(x = expr)$globalTable()
+    table$select(x = global$x$x)
+})
+
+setMethod("eval", c("HailExpression", "HailTableContext"),
+          function (expr, envir, enclos) {
+              df <- toHailTable(envir, expr)$collect()
+              df[[1L]]
+          })
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Summarization
+###
+
+setMethod("head", "HailTableRowContext", function(x, n) {
+    initialize(x, context=context(x)$head(n))
+})
+
+setMethod("head", "HailTableGlobalContext", function(x, n) {
+    initialize(x, context=context(x)$globalTable()$head(n))
+})
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### I/O
 ###
 
-readHailTable <- function(file) HailTable(hail_context()$readTable(file))
+readHailTable <- function(file) hail_context()$readTable(file)
 
 readHailTableFromText <- function(file,
                                   keyNames = character(0L),
