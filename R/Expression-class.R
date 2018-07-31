@@ -7,15 +7,9 @@
 
 setClassUnion("Expression", "language")
 
-setClass("SimpleExpression",
-         slots=c(expr="character"),
-         prototype=prototype(expr=""),
-         validity=function(object) {
-             if (!isSingleString(object@expr)) {
-                 "'expr' must be a single, non-NA string"
-             }
-         })
-setIs("SimpleExpression", "Expression")
+setClass("ConstantExpression",
+         slots=c(value="ANY"))
+setIs("ConstantExpression", "Expression")
 
 setClassUnion("Symbol", "name")
 setIs("Symbol", "Expression")
@@ -44,6 +38,9 @@ setIs("SimpleCall", "Call")
 setClass("MethodCall")
 setIs("MethodCall", "Call")
 
+.SimpleMethodCall <- setClass("SimpleMethodCall",
+                              slots=c(target="Expression"),
+                              contains="SimpleCall")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Constructors
@@ -57,6 +54,18 @@ SimpleCall <- function(name, args) {
     .SimpleCall(name=as.character(name), args=as.list(args))
 }
 
+SimpleMethodCall <- function(target, name, args) {
+    .SimpleMethodCall(SimpleCall(name, args), target=target)
+}
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Accessors
+###
+
+name <- function(x) x@name
+target <- function(x) x@target
+args <- function(x) x@args
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Factory
 ###
@@ -68,5 +77,9 @@ setGeneric("expressionClass", function(x) standardGeneric("expressionClass"))
 ###
 
 setMethod("as.character", "SimpleCall", function(x) {
-    paste0(name(x), "(", paste(args, collapse=", "), ")")
+    paste0(name(x), "(", paste(args(x), collapse=", "), ")")
+})
+
+setMethod("as.character", "SimpleSymbol", function(x) {
+    name(x)
 })
