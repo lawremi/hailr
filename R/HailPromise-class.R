@@ -92,10 +92,21 @@ HailPromiseList <- function(...) {
 ### Basic accessors
 ###
 
-setMethod("length", "HailPromise", function(x) {
-    hailCall("size", x)
+setGeneric("size", function(x) length(x))
+
+setMethod("size", "HailPromise", function(x) {
+    promiseMethodCall("size", TINT32, x)
 })
 
+### Our promises are typed according to the type of data they
+### contain. Whether a promise corresponds to a vector or scalar in
+### Hail depends on the context.
+
+setMethod("length", "HailPromise", function(x) {
+    contextualLength(x, context(x))
+})
+
+## We think of a struct in the table(row) context like a nested table
 setMethod("length", "BaseStructPromise", function(x) {
     length(as.list(x))
 })
@@ -121,13 +132,24 @@ setMethod("head", "HailPromise", function(x, n) {
 ###
 
 ## Compare to solrCall()
-hailCall <- function(fun, type, ...) {
+
+promiseCall <- function(fun, type, CALL_CONSTRUCTOR, ...) {
     args <- list(...)
     promises <- vapply(args, is, "Promise", FUN.VALUE=logical(1L))
     args[promises] <- lapply(args[promises], expr)
     ctx <- resolveContext(...)
-    expr <- HailCall(fun, args)
+    expr <- CALL_CONSTRUCTOR(fun, args)
     Promise(type, expr, ctx)
+}
+
+promiseStaticCall <- function(fun, type, ...) {
+    promiseCall(fun, type, HailStaticCall, ...)
+}
+
+promiseMethodCall <- function(target, fun, type, ...) {
+    promiseCall(fun, type, function(fun, args) {
+        HailMethodCall(args[[1L]], fun, tail(args, -1L))
+    }, target, ...)
 }
 
 ## From rsolr

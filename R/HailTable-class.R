@@ -77,55 +77,76 @@ setMethod("hailType", "HailTable",
                 HailTableGlobalContext(.self))
     },
     select = function(...) {
-        expr <- HailStructDeclaration(...)
-        HailTable(impl(.self)$select(as.character(expr)))
+        expr <- HailMakeStruct(...)
+        HailTable(.self$impl$select(as.character(expr), JavaArrayList(), 0L))
     },
     selectGlobals = function(...) {
-        expr <- HailStructDeclaration(...)
-        HailTable(impl(.self)$selectGlobal(as.character(expr)))
+        expr <- HailMakeStruct(...)
+        HailTable(.self$impl$selectGlobal(as.character(expr)))
     },
     joinGlobals = function(right) {
         left <- .self
-        utils <- jvm(impl(left))$is$hail$utils
-        HailTable(utils$joinGlobals(impl(left), impl(right), "x"))
+        utils <- jvm(left$impl)$is$hail$utils
+        HailTable(utils$joinGlobals(left$impl, right$impl, "x"))
     },
     globalTable = function() {
         .self$joinGlobals(RangeHailTable(.self$hailContext(), 1L, 1L))
     },
+    count = function() {
+        .self$impl$count()
+    },
     head = function(n) {
-        HailTable(impl(.self)$head(n))
+        HailTable(.self$impl$head(n))
     },
     collect = function() {
-        fromJSON(impl(.self)$collectJSON())
+        fromJSON(.self$impl$collectJSON())
     },
     hailContext = function() {
-        impl(.self)$hc()
+        .self$impl$hc()
     }
 )
 
 ## Could record nrow upon construction to avoid repeated Java calls
 setMethod("nrow", "HailTable", function(x) impl(x)$count())
 
+hailTable <- function(x) x@hailTable
+
+setGeneric("contextualLength", function(x, context) length(x))
+
+setMethod("contextualLength", c("HailPromise", "HailTableRowContext"),
+          function(x, context) hailTable(context)$count())
+
+setMethod("contextualLength", c("HailPromise", "HailExpressionContext"),
+          function(x, context) 1L)
+
+setMethod("contextualLength",
+          c("ContainerPromise", "HailExpressionContext"),
+          function(x, context) promiseMethodCall(head(x, 1L), "size"))
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Evaluation
 ###
 
-setGeneric("toHailTable",
-           function(context, expr) standardGeneric("toHailTable"),
+setGeneric("deriveTable",
+           function(context, expr) standardGeneric("deriveTable"),
            signature="context")
 
-setMethod("toHailTable", "HailTableRowContext", function(context, expr) {
-    context(envir)$select(x = expr)$selectGlobals()
+setMethod("deriveTable", "HailTableRowContext", function(context, expr) {
+    hailTable(context)$select(x = expr) #$selectGlobals()
 })
 
-setMethod("toHailTable", "HailTableGlobalContext", function(context, expr) {
-    table <- context(envir)$selectGlobals(x = expr)$globalTable()
+setMethod("deriveTable", "HailTableGlobalContext", function(context, expr) {
+    table <- hailTable(context)$selectGlobals(x = expr)$globalTable()
     table$select(x = global$x$x)
 })
 
+### Collecting a Hail promise is analogous to Solr: we derive a new
+### table using the promise expression, collect that table and extract
+### the column.
+
 setMethod("eval", c("HailExpression", "HailTableContext"),
           function (expr, envir, enclos) {
-              df <- toHailTable(envir, expr)$collect()
+              df <- deriveTable(envir, expr)$collect()
               df[[1L]]
           })
 
@@ -134,11 +155,11 @@ setMethod("eval", c("HailExpression", "HailTableContext"),
 ###
 
 setMethod("head", "HailTableRowContext", function(x, n) {
-    initialize(x, context=context(x)$head(n))
+    initialize(x, hailTable=hailTable(x)$head(n))
 })
 
 setMethod("head", "HailTableGlobalContext", function(x, n) {
-    initialize(x, context=context(x)$globalTable()$head(n))
+    initialize(x, hailTable=hailTable(x)$globalTable()$head(n))
 })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
