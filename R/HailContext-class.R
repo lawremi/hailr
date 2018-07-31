@@ -95,7 +95,8 @@ setMethod("expressionClass", "HailExpressionContext",
                            noHeader = FALSE,
                            impute = FALSE,
                            quote = NULL,
-                           skipBlankLines = FALSE)
+                           skipBlankLines = FALSE,
+                           forceBGZ = FALSE)
     {
         stopifnot(isSingleString(file),
                   isTRUEorFALSE(noHeader),
@@ -109,19 +110,20 @@ setMethod("expressionClass", "HailExpressionContext",
                   is.character(keyNames), !anyNA(keyNames),
                   isTRUEorFALSE(skipBlankLines),
                   is.null(nPartitions) || isSingleNumber(nPartitions),
-                  isTRUEorFALSE(impute))
+                  isTRUEorFALSE(impute),
+                  isTRUEorFALSE(forceBGZ))
 
         if (!is.null(nPartitions))
             nPartitions <- as.integer(nPartitions)
 
-        ### FIXME: 'comment' will be an ArrayList<String> in next Hail
         HailTable(.self$impl$importTable(JavaArrayList(file),
                                          JavaArrayList(keyNames),
                                          nPartitions, JavaHashMap(types),
-                                         comment, separator, missing,
-                                         noHeader, impute, quote
-                                         ### next version: skipBlankLines
-                                         ))
+                                         JavaArrayList(comment), separator,
+                                         missing,
+                                         noHeader, impute, quote,
+                                         skipBlankLines,
+                                         forceBGZ))
     },
     readTable = function(file) {
         stopifnot(isSingleString(file))

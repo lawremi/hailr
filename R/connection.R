@@ -3,6 +3,7 @@
 ### -------------------------------------------------------------------------
 ###
 
+### FIXME: are we sure that these settings are still needed?
 hail_config <- function() {
     list(spark.serializer="org.apache.spark.serializer.KryoSerializer",
          spark.kryo.registrator="is.hail.kryo.HailKryoRegistrator")

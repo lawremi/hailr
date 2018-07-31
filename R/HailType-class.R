@@ -221,7 +221,7 @@ setAs("is.hail.expr.types.TableType", "HailType",
           rowType <- as(from$rowType(), "HailType")
           globalType <- as(from$globalType(), "HailType")
           ## FIXME: as.character() needed due to limitation in sparklyr (#1558)
-          keys <- as.character(from$key())
+          keys <- as.character(from$key()$getOrElse(NULL))
           initialize(callNextMethod(), rowType=rowType, globalType=globalType,
                      keys=keys)
       })
