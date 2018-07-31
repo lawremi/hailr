@@ -85,10 +85,21 @@ tbl.JVM <- function(src, from) {
 ### Driver registration and selection
 ###
 
+add_jars_to_config <- function(config, jars) {
+    config[["sparklyr.jars.default"]] <- jars
+    classpath_vars <-
+        c(spark.driver.extraClassPath=paste(jars, collapse=.Platform$path.sep),
+          spark.executor.extraClassPath=paste(basename(jars),
+                                              collapse=.Platform$path.sep))
+    config[["sparklyr.shell.conf"]] <-
+        paste0(names(classpath_vars), "='", classpath_vars, "'")
+    config
+}
+
 register_spark_driver("sparklyr", function(jars, config=spark_config(), ...) {
     if (!requireNamespace("sparklyr", quietly=TRUE))
         stop("The sparklyr package is required to use the sparklyr backend")
-    config[["sparklyr.jars.default"]] <- jars
+    config <- add_jars_to_config(config, jars)
     sparklyr::spark_connect(spark_master(), spark_home(),
                             version = spark_version(),
                             config=config, ...)
