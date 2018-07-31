@@ -11,7 +11,7 @@
 ##   internal detail.
 
 .HailDataFrame <- setClass("HailDataFrame",
-                           slots=c(table="HailTable"),
+                           slots=c(hailTable="HailTable"),
                            contains="DataFrame")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -19,8 +19,11 @@
 ###
 
 HailDataFrame <- function(table) {
+    ### FIXME: this will query for the length() of every column. We
+    ### could just query the 'table' and set the length on the promise
+    ### (requires adding a nullable length slot).
     .HailDataFrame(DataFrame(as.list(table$row())),
-                   table=table,
+                   hailTable=table,
                    metadata=as.list(table$globals()))
 }
 
