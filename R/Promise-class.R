@@ -16,10 +16,6 @@ setClass("SimplePromise",
 ### Accessors
 ###
 
-### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### Accessors
-###
-
 expr <- function(x) x@expr
 `expr<-` <- function(x, value) {
     x@expr <- value
@@ -56,3 +52,21 @@ as.data.frame.Promise <- function(x, row.names = NULL, optional = FALSE, ...) {
 }
 
 as.list.Promise <- function(x, ...) as.list(fulfill(x))
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### show()
+###
+
+## makes Promises mostly invisible to the user
+setMethod("show", "Promise", function(object) {
+    show(fulfill(object))
+})
+
+setGeneric("inspect", function(x) standardGeneric("inspect"))
+
+setMethod("inspect", "Promise", function(x) {
+    cat(paste(class(x), "object"),
+        paste("expr:", as.character(expr(x))),
+        paste("context:", class(context(x))),
+        sep="\n")
+})
