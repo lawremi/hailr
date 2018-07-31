@@ -26,8 +26,6 @@ path <- function(x) environment(x)$path
     x
 }
 
-target <- function(x) environment(x)$target
-
 setMethod("$", "JavaPath", function(x, name) {
     x[[name]]
 })
