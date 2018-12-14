@@ -48,5 +48,5 @@ ensure_hail_home <- function() {
 }
 
 hail_jar <- function(home = ensure_hail_home()) {
-    file.path(home, "hail", "jars", "hail-all-spark.jar")
+    file.path(home, "hail", "hail-all-spark.jar")
 }

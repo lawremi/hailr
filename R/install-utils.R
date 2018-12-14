@@ -7,27 +7,32 @@ install_spark <- function(version) {
     sparklyr::spark_install(version)
 }
 
-available_hails <- function() {
-    rbind(data.frame(version       = "0.1",
-                     build         = "20613ed50c74",
-                     spark_version = c("2.0.2", "2.1.0"),
-                     stringsAsFactors=FALSE),
-          data.frame(version       = "devel",
-                     build         = "fdf130b2f5d4",
-                     spark_version = c("2.2.0"),
-                     stringsAsFactors=FALSE))
+install_hail_artifact <- function(hail) {
+    dest <- download_hail(hail)
+    file.path(extract_hail(dest), paste0("hail-", hail$version))
 }
 
-hail_filename <- function(version, build, spark_version) {
-    paste0("Hail-", version, "-", build, "-Spark-",
-           spark_version, ".zip")
+hail_artifact <- function(version, hash, spark_version = "2.2.0") {
+    data.frame(version       = version,
+               hash          = hash,
+               spark_version = spark_version,
+               stringsAsFactors = FALSE)
 }
 
-hail_url <- function(version, build, spark_version) {
-    dist_url <- "https://storage.googleapis.com/hail-common/distributions"
-    paste(dist_url, version,
-          hail_filename(version, build, spark_version),
-          sep = "/")
+available_hails <- function() {                                 
+    rbind(hail_artifact(
+        "0.2.5",
+        "b7/55/8e2a86da134ee3485269a5f9e53b3c6202119351ec75e9d3382b1c1cb200"
+    ))
+}
+
+hail_filename <- function(version, hash, spark_version) {
+    paste0("hail-", version, ".tar.gz")
+}
+
+hail_url <- function(version, hash, spark_version) {
+    dist_url <- "https://files.pythonhosted.org/packages"
+    paste(dist_url, hash, hail_filename(version, spark_version), sep = "/")
 }
 
 download_hail <- function(hail) {
@@ -87,7 +92,7 @@ select_hail <- function(hails, version) {
 }
 
 extract_hail <- function(file) {
-    exdir <- file.path(hail_dir(), file_path_sans_ext(basename(file)))
+    exdir <- hail_dir()
     if (file.exists(exdir))
         unlink(exdir)
     untar(file, exdir=exdir)
@@ -114,8 +119,7 @@ install_hail <- function(version) {
             "The sparklyr package must be installed to install hail",
             "Please install sparklyr or install Hail manually.")))
     hail <- select_hail(available_hails(), version)
-    dest <- download_hail(hail)
-    extract_hail(dest)
+    install_hail_artifact(hail)
 }
 
 hail_dir <- function() {
@@ -131,7 +135,8 @@ installed_hails <- function() {
     dirs <- dir(hail_dir(), full.names=TRUE)
     hails <- available_hails()
     hail_filenames <- do.call(hail_filename, hails)
-    m <- match(file_path_sans_ext(hail_filenames), basename(dirs), 0L)
+    m <- match(file_path_sans_ext(hail_filenames, compression=TRUE),
+               basename(dirs), 0L)
     ans <- hails[m > 0L,]
     ans$home <- dirs[m]
     ans

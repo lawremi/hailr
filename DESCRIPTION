@@ -13,9 +13,9 @@ Depends:
     R (>= 3.2.0),
     BiocGenerics (>= 0.15.1),
     methods
-Suggests: sparklyr, dplyr, rappdirs
+Suggests: sparklyr (>= 0.9.2), dplyr, rappdirs
 Collate:
-	copy.R
+	send.R
         JavaMethodTarget-class.R
 	JVM-class.R
 	JavaObject-class.R
@@ -30,6 +30,7 @@ Collate:
 	HailDataFrame-class.R
 	HailGRanges-class.R
 	HailMatrixTable-class.R
+	HailMetaDataFrame-class.R
 	HailExperiment-class.R
 	HailContextManager-class.R
 	SparkDriverManager-class.R
@@ -39,5 +40,6 @@ Collate:
 	connection.R
 	install-utils.R
 	java-utils.R
+	typed_list.R
 	Sparklyr-driver.R
 	utils.R

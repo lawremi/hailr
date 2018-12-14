@@ -45,6 +45,20 @@ setMethod("expressionClass", "HailExpressionContext",
           function(x) "HailExpression")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Evaluation
+###
+
+### Collecting a Hail promise is analogous to Solr: we derive a new
+### table using the promise expression, collect that table and extract
+### the column.
+
+setMethod("eval", c("HailExpression", "HailExpressionContext"),
+          function (expr, envir, enclos) {
+              df <- deriveTable(envir, expr)$collect()
+              df[[1L]]
+          })
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### File I/O
 ###
 
@@ -140,5 +154,5 @@ setMethod("marshal", c("ANY", "HailContext"), function(x, dest) {
 })
 
 setMethod("transmit", c("ANY", "HailContext"), function(x, dest) {
-    transmit(transmit(x, dest$impl), dest)
+    transmit(x, dest$impl)
 })

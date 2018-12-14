@@ -209,14 +209,47 @@
 }
 
 \examples{
+library(hailr)
 data_dir <- system.file("extdata", package="hailr")
 tsv1 <- file.path(data_dir, "kt_example1.tsv")
 
 ## read directly from file into Hail
 df <- readHailDataFrameFromText(tsv1, header=TRUE)
 
-## read file into R, copy to Hail
-df <- copy(read.table(tsv1, header=TRUE), hail_context())
+## read file into R, send to Hail
+df <- send(read.table(tsv1, header=TRUE), hail())
+
+## add/modify columns
+transform(df, A = X / 2, B = X + 21)
+
+### TOUGH: not supported by Hail directly, but could aggregate() and join()
+
+transform(group(df, ~ SEX), HT_z = (HT - mean(HT)) / sd(HT))
+
+### The mean() and sd() calls would delegate to aggregate(), which
+### produces an aggregated table. If we knew that the aggregated table
+### was derived from the grouped table, then we could do the join as
+### part of reconciling the contexts. It comes down to whether we
+### should allow this type of syntax, with an implicit join from the
+### aggregated to unaggregated data:
+
+gdf <- group(df, ~ SEX)
+gdf$HT - mean(gdf$HT) / sd(gdf$HT)
+
+### This is how a SplitDataFrameList would behave, but it is a list,
+### so the behavior is sort of obvious. The implicit join may not be.
+
+## filter rows
+tsv2 <- file.path(data_dir, "kt_example2.tsv")
+df2 <- readHailDataFrameFromText(tsv2, header=TRUE)
+subset(df2, B != "rabbit")
+
+## aggregate
+aggregate(df, mean_c1 = mean(C1), mean_c2 = mean(C2))
+aggregate(~ SEX, df, mean_height_data = mean(HT))
+
+## modify global fields
+transform_globals(global_field_1 = c(1, 2, 3))
 }
 
 \keyword{methods}

@@ -1,15 +1,15 @@
 ### =========================================================================
-### Copying
+### Sending
 ### -------------------------------------------------------------------------
 ###
-### Utlitlies for copying data somewhere and still being able to use it.
+### Utlitlies for sending data somewhere and still being able to use it.
 ### 
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### copy(): the top-level user entry point
+### send(): the top-level user entry point
 ###
 
-copy <- function(x, dest) {
+send <- function(x, dest) {
     marshalled <- marshal(x, dest)
     remote <- transmit(marshalled, dest)
     unmarshal(remote, x)

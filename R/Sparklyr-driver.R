@@ -64,8 +64,33 @@ setMethod("transmit", c("ANY", "spark_connection"), function(x, dest) {
 })
 
 setMethod("marshal", c("ANY", "spark_connection"), function(x, dest) {
-    as(x, "data.frame")
+    data.frame(lapply(as(x, "data.frame"), marshalColumn, dest))
 })
+
+setGeneric("marshalColumn", function(x, dest) x)
+
+setMethod("marshalColumn", c("list", "spark_connection"), function(x, dest) {
+    delimit(x)
+})
+
+internal_separator <- "\030"
+empty_element_indicator <- "\025"
+
+delimit <- function(x) {
+    cx <- CharacterList(x)
+    ifelse(lengths(cx) == 0L, empty_element_indicator,
+           unstrsplit(cx, internal_separator))
+}
+
+setMethod("unmarshal", c("StringPromise", "list"), function(x, skeleton) {
+    ifelse2(x == empty_element_indicator, list(character(0L)),
+            strsplit(x, internal_separator))
+})
+
+setMethod("unmarshal", c("StringPromise", "integer_list"),
+          function(x, skeleton) {
+              cast(callNextMethod(), hailType(skeleton))
+          })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### dplyr integration

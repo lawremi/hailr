@@ -35,19 +35,101 @@ setMethod("unmarshal", c("HailTable", "DataFrame"),
               df <- callNextMethod()
               ncl <- lapply(skeleton, ncolsAsDF)
               cnl <- split(colnames(df), PartitioningByWidth(ncl))
-              cols <- mapply(function(cn, target) {
-                  as(df[cn], promiseClass(target), strict=FALSE)
+              cols <- mapply(function(cn, skel) {
+                  if (length(cn) == 1L)
+                      unmarshal(df[[cn]], skel)
+                  else unmarshal(df[cn], skel)
               }, cnl, skeleton, SIMPLIFY=FALSE)
-              do.call(transform, c(list(df), cols))[names(cols)]
+              select(df, cols)
+          })
+
+setMethod("unmarshal", c("HailTable", "data.frame"),
+          function(x, skeleton) {
+              df <- callNextMethod()
+              cols <- mapply(unmarshal, df, skeleton, SIMPLIFY=FALSE)
+              select(df, cols)
           })
 
 setAs("ANY", "HailDataFrame", function(from) {
-    copy(as(from, "DataFrame"), hail())
+    push(as(from, "DataFrame"), hail())
 })
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Synchronize underlying table with current columns
+###
+
+tableForCols <- function(cols, table, context) {
+    if (!is(table, "HailTable"))
+        hailTable(send(DataFrame(cols), context))
+    else table$select(lapply(cols, expr))
+}
+
+setGeneric("push", function(x, remote) standardGeneric("push"))
+
+setMethod("push", c("HailDataFrame", "missing"),
+          function(x, remote = hailTable(x)$hailContext()) {
+              push(x, remote)
+          })
+
+setMethods("push",
+           list(c("DataFrame", "is.hail.HailContext"),
+                c("data.frame", "is.hail.HailContext")),
+           function(x, remote) {
+               if (ncol(x) == 0L) {
+                   return(tableForCols(x,
+                                       if (is(x, "HailDataFrame")) hailTable(x),
+                                       remote))
+               }
+               cols <- as.list(x)
+               ctx <- context(x[[1L]])
+               ans_table <- NULL
+               
+               repeat {
+                   in_ctx <- vapply(cols,
+                                    function(xi) identical(context(xi), ctx),
+                                    logical(1L))
+                   table <- tableForCols(cols[in_ctx], ctx, remote)
+                   ans_table <- bindCols(ans_table, table)
+                   cols <- cols[!in_ctx]
+                   if (length(cols) == 0L)
+                       break
+                   ctx <- context(cols[[1L]])
+               }
+               
+               HailDataFrame(ans_table)[names(x)]
+           })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessor methods.
 ###
+
+setMethod("extractROWS", c("HailDataFrame", "ANY"), function(x, i) {
+    HailDataFrame(extractROWS(hailTable(x), i))
+})
+
+setMethod("[", "HailDataFrame", function(x, i, j, ..., drop = TRUE) {
+    df <- callNextMethod()
+    if (!identical(names(df), names(x)))
+        hailTable(df) <- hailTable(df)$select(lapply(df, expr))
+    df
+})
+
+setReplaceMethod("[", "HailDataFrame", function(x, i, j, ..., value) {
+    df <- callNextMethod() # an invalid HailDataFrame
+    push(df)
+})
+
+setMethod("setListElement", "HailDataFrame", function(x, i, value) {
+    df <- callNextMethod()
+    push(df)
+})
+
+## like dplyr's transmute()
+select <- function(x, vars) {
+    if (identical(as.list(x), vars))
+        return(x)
+    HailDataFrame(hailTable(x)$select(lapply(vars, expr)))
+}
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Summarizing

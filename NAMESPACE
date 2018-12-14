@@ -18,4 +18,16 @@ export(use_spark_driver, use_hail_home, use_hail_context, HailContext,
 export(readHailExperiment, readHailExperimentFromVCF,
        readHailDataFrame, readHailDataFrameFromText)
 
-export(copy)
+export(send)
+
+export(integer_list)
+
+exportMethods(strsplit)
+
+S3method(as.data.frame, typed_list)
+
+S3method(as.list, Promise)
+S3method(as.Date, Promise)
+S3method(as.POSIXct, Promise)
+S3method(as.POSIXlt, Promise)
+S3method(as.data.frame, Promise)

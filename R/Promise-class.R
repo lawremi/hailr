@@ -12,6 +12,9 @@ setClass("SimplePromise",
                  context="Context"),
          contains="Promise")
 
+## captures a call to order(); a start on a general algebra...
+setClass("OrderPromise", contains="Promise")
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessors
 ###
@@ -21,11 +24,31 @@ expr <- function(x) x@expr
     x@expr <- value
     x
 }
-context <- function(x) x@context
+
+setGeneric("context", function(x) NULL)
+
+setMethod("context", "Promise", function(x) x@context)
+
 `context<-` <- function(x, value) {
     x@context <- value
     x
 }
+
+setMethod("[", "Promise", function(x, i, j, ..., drop = TRUE) {
+    if (!missing(j) || length(list(...)) > 0L || !missing(drop)) {
+        stop("'[' only accepts x[i] or x[] syntax")
+    }
+    if (missing(i)) {
+        return(x)
+    }
+    if (is(i, "Promise")) {
+        ctx <- resolveContext(x, i)
+    } else {
+        ctx <- context(x)
+    }
+    context(x) <- ctx[i,]
+    x
+})
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Fulfillment

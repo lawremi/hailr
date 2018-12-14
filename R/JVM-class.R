@@ -47,5 +47,5 @@ setMethod("marshal", c("ANY", "JVM"), function(x, dest) {
 })
 
 setMethod("transmit", c("ANY", "JVM"), function(x, dest) {
-    downcast(JavaObject(copy(x, impl(dest))))
+    downcast(JavaObject(transmit(x, impl(dest))))
 })

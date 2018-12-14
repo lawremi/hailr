@@ -59,6 +59,14 @@ setMethod("fromJava", "ANY", function(x) x)
 
 setMethod("fromJava", "list", function(x) lapply(x, fromJava))
 
+setMethod("fromJava", "NULL", function(x) NULL)
+
+setClass("scala.collection.Iterable", contains="JavaObject")
+
+setMethod("fromJava", "scala.collection.Iterable", function(x) {
+    jvm(x)$is$hail$utils$iterableToArrayList(x)$toArray()
+})
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Helpers
 ###

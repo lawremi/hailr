@@ -12,7 +12,7 @@ setClass("ConstantExpression",
 setIs("ConstantExpression", "Expression")
 
 setClassUnion("Symbol", "name")
-setIs("Symbol", "Expression")
+##setIs("Symbol", "Expression")
 
 .SimpleSymbol <- setClass("SimpleSymbol",
                           slots=c(name="character"),
