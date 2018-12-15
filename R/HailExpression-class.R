@@ -263,9 +263,16 @@ setMethod("ir_args", "HailMakeStruct",
 setMethod("ir_args", "HailStr", function(x) list(paste0("\"", x@x, "\"")))
 
 escape_id <- function(x) {
+    underscored <- startsWith(x, "_")
+    if (underscored) {
+        x <- paste0("x", x)
+    }
     ans <- capture.output(print(as.name(x)))
-    if (startsWith(ans, "."))
+    if (underscored) {
+        ans <- substring(x, 2L)
+    } else if (startsWith(ans, ".")) {
         ans <- paste0("`", ans, "`")
+    }
     ans
 }
 
