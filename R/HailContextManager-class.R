@@ -8,7 +8,7 @@ setClassUnion("HailContext_OR_NULL", c("HailContext", "NULL"))
 HailContextManager_getContext <- function(.self) {
     ctx <- .self$context
     if (is.null(ctx)) {
-        ctx <- .self$setHailContext(HailContext())
+        ctx <- .self$setHailContext(initHailContext())
     }
     ctx
 }

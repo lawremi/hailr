@@ -5,8 +5,8 @@ test_HailPromise_operators <- function() {
                        c = c(3L, 13L, 20L),
                        d = c(5L, -1L, 3L),
                        e = c("hello", "cat", "dog"),
-                       f = integer_list(1:3, integer(0L), 5:7)
-                       ##f = hailr:::character_list(1:3, integer(0L), 5:7)
+                       f = integer_list(1:3, integer(0L), 5:7),
+                       stringsAsFactors = FALSE
                        )
     options(verbose=TRUE)
     kt <- send(rows, hail())
@@ -50,7 +50,12 @@ test_HailPromise_operators <- function() {
                   x35 = FALSE,
                   x36 = TRUE)
 
-    result <- as.data.frame(head(do_transform(kt), 1L))
+    do_transform2 <- function(x)
+        transform(x,
+                  x35 = FALSE,
+                  x36 = TRUE)
+
+    result <- as.data.frame(head(do_transform2(kt), 1L))
     expected <- head(do_transform(rows), 1L)
     checkEquals(result, expected)
 }

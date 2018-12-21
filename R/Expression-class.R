@@ -26,13 +26,7 @@ setClassUnion("Call", "call")
 setIs("Call", "Expression")
 
 ## Could sit above SolrFunctionCall
-.SimpleCall <- setClass("SimpleCall",
-                        slots=c(name="character",
-                                args="list"),
-                        validity=function(object) {
-                            if (!isSingleString(object@name))
-                                "'name' of a function call must be a string"
-                        })
+.SimpleCall <- setClass("SimpleCall", slots=c(name="Symbol", args="list"))
 setIs("SimpleCall", "Call")
 
 setClass("MethodCall")
@@ -51,7 +45,7 @@ SimpleSymbol <- function(name) {
 }
 
 SimpleCall <- function(name, args) {
-    .SimpleCall(name=as.character(name), args=as.list(args))
+    .SimpleCall(name=name, args=as.list(args))
 }
 
 SimpleMethodCall <- function(target, name, args) {

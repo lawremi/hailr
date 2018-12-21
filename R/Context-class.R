@@ -13,11 +13,13 @@ setClassUnion("Context", "environment")
 
 setGeneric("parent", function(x) standardGeneric("parent"))
 
-setMethod("parent", "Context", function(x) NULL)
+setMethod("parent", "Context", function(x) { NULL }) # {() for bug in methods
 
 derivesFrom <- function(x, p) {
-    !is.null(x) && (identical(parent(x), p) || derivesFrom(parent(x), p))
+    !is.null(x) && (same(parent(x), p) || derivesFrom(parent(x), p))
 }
+
+setGeneric("same", function(x, y) identical(x, y))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Aggregation (often requires delegation from e.g. row-level to context)

@@ -7,8 +7,8 @@ Maintainer: Michael Lawrence <michafla@gene.com>
 Description: Enables computing on genotype data within Hail (and Spark)
              by writing R code based on Bioconductor APIs
 License: file GNE_LICENSE
-Imports: SummarizedExperiment, S4Vectors, IRanges, GenomicRanges, jsonlite,
-         utils, tools
+Imports: SummarizedExperiment, S4Vectors (>= 0.21.8), IRanges, GenomicRanges,
+	 jsonlite, utils, tools
 Depends:
     R (>= 3.2.0),
     BiocGenerics (>= 0.15.1),

@@ -69,6 +69,11 @@ setMethod("marshal", c("ANY", "spark_connection"), function(x, dest) {
 
 setGeneric("marshalColumn", function(x, dest) x)
 
+setMethod("marshalColumn", c("AsIs", "ANY"), function(x, dest) {
+    class(x) <- setdiff(class(x), "AsIs")
+    marshalColumn(x, dest)
+})
+
 setMethod("marshalColumn", c("list", "spark_connection"), function(x, dest) {
     delimit(x)
 })

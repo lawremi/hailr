@@ -14,7 +14,7 @@ setIs("HailExpressionContext", "Context")
                             fields = c(impl="is.hail.HailContext"),
                             contains="HailExpressionContext")
 
-HailContext_impl <- function(context, logFile, append, branchingFactor)
+initHailContext_impl <- function(context, logFile, append, branchingFactor)
 {
     ## 'appName', 'master', 'local' and 'minBlockSize' taken from 'context'
     jvm(context)$is$hail$HailContext$apply(context,
@@ -29,11 +29,15 @@ HailContext_impl <- function(context, logFile, append, branchingFactor)
                                            tmpDir = tempdir())
 }
 
-HailContext <- function(context = sparkContext(HailConnection()),
-                        logFile = "hail.log", append = FALSE,
-                        branchingFactor = 50L)
+initHailContext <- function(context = sparkContext(HailConnection()),
+                            logFile = "hail.log", append = FALSE,
+                            branchingFactor = 50L)
 {
-    impl <- HailContext_impl(context, logFile, append, branchingFactor)
+    impl <- initHailContext_impl(context, logFile, append, branchingFactor)
+    HailContext(impl)
+}
+
+HailContext <- function(impl) {
     .HailContext(impl=impl)
 }
 
@@ -43,6 +47,16 @@ HailContext <- function(context = sparkContext(HailConnection()),
 
 setMethod("expressionClass", "HailExpressionContext",
           function(x) "HailExpression")
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Comparison
+###
+
+setMethod("same", c("HailContext", "HailContext"),
+          function(x, y) same(x$impl, y$impl))
+
+setMethod("same", c("is.hail.HailContext", "is.hail.HailContext"),
+          function(x, y) x$equals(y))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Evaluation

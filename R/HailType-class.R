@@ -152,6 +152,7 @@ setGeneric("vectorMode", function(x) standardGeneric("vectorMode"))
 
 setMethod("vectorMode", "TBoolean", function(x) "logical")
 setMethod("vectorMode", "TFloat64", function(x) "numeric")
+setMethod("vectorMode", "TFloat32", function(x) "numeric")
 setMethod("vectorMode", "TInt32", function(x) "integer")
 setMethod("vectorMode", "TString", function(x) "character")
 

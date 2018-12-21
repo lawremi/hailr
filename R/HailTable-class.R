@@ -38,8 +38,8 @@ HailTable <- function(impl) {
 }
 
 RangeHailTable <- function(hc, n, n_partitions=NULL) {
-    HailTable(jvm(hc)$is$hail$table$Table$range(hc, n,
-                                                JavaOption(n_partitions)))
+    HailTable(jvm(hc$impl)$is$hail$table$Table$range(hc$impl, n,
+                                                     JavaOption(n_partitions)))
 }
 
 setMethod("transmit", c("org.apache.spark.sql.Dataset", "is.hail.HailContext"),
@@ -85,18 +85,26 @@ setMethod("hailType", "HailTable",
                 HailGlobalContext(.self))
     },
     select = function(...) {
-        ## Like Python, named args are computed expressions and
-        ## unnamed args are column names to select, because the
-        ## underlying Scala select() is a generalized projection.
-        expr <- select_struct(...)
+        .self$selectStruct(struct(...))
+    },
+    selectStruct = function(expr) {
         if (getOption("verbose")) {
             message("select: {", as.character(expr), "}")
         }
         HailTable(.self$impl$mapRows(as.character(expr)))
     },
     selectGlobals = function(...) {
-        expr <- select_struct(...)
+        expr <- struct(...)
         HailTable(.self$impl$selectGlobal(as.character(expr)))
+    },
+    annotate = function(...) {
+        s <- struct(...)
+        r <- expr(.self$row())
+        r[names(s)] <- s
+        .self$selectStruct(r)
+    },
+    annotate1 = function(name, value) {
+        .self$annotate(setNames(list(value), name))
     },
     filter = function(expr) {
         HailTable(.self$impl$filter(as.character(expr), FALSE))
@@ -118,10 +126,9 @@ setMethod("hailType", "HailTable",
         HailTable(.self$impl$head(n))
     },
     collect = function() {
-        fromJSON(.self$impl$collectJSON())
-    },
-    hailContext = function() {
-        .self$impl$hc()
+        df <- fromJSON(.self$impl$collectJSON())
+        df[] <- Map(cast, df, rowType(hailType(.self)))
+        df
     }
 )
 
@@ -129,7 +136,7 @@ check_compatible_keys <- function(left, right) {
     identical(keyType(hailType(left)), keyType(hailType(right)))
 }
 
-select_struct <- function(...) {
+struct <- function(...) {
     args <- list(...)
     if (length(args) == 1L && is.list(args[[1L]]))
         args <- args[[1L]]
@@ -161,14 +168,10 @@ isSlice <- function(i) length(i) > 0L && identical(i, head(i, 1L):tail(i, 1L))
 
 isHead <- function(i) identical(head(i, 1L), 1L) && isSlice(i)
 
-## TODO: Seems like we could somehow handle a match() result using a
-##       join, but the pick-first match() behavior complicates that,
-##       as do the NAs. Should be possible through aggregation, but it
-##       would be messy. Most of the time the user really wants a join.
-
 setMethod("extractROWS", c("HailTable", "HailOrderPromise"), function(x, i) {
     stopifnot(derivesFrom(context(i), x))
-    HailTable(x$annotate(.order = expr(i))$orderBy(".order")$drop(".order"))
+    o <- uuid("o")
+    x$annotate1(o, i)$orderBy(o)$drop(o)
 })
 
 setMethods("extractROWS",
@@ -189,20 +192,20 @@ setMethods("extractROWS",
            })
 
 setMethods("extractROWS",
-           list(c("HailTable", "integer"),
+           list(c("HailTable", "numeric"),
                 c("HailTable", "NumericPromise")),
            function(x, i) {
                if (isHead(i)) {
                    ans <- x$head(length(i))
                } else {
                    ind <- uuid("i")
-                   ix <- x$addIndex(ind)
+                   x[[ind]] <- seq_along_rows(x)
                    if (isSlice(i)) {
-                       .i <- ix[[ind]]
-                       ans <- ix$filter(.i >= head(i, 1L) & .i <= tail(i, 1L))
+                       .i <- x[[ind]]
+                       ans <- x$filter(.i >= head(i, 1L) & .i <= tail(i, 1L))
                    } else {
-                       idf <- push(DataFrame(.i = i), x$hailContext())
-                       ans <- ix$keyBy(ind)$join(idf$keyBy(ind))
+                       idf <- push(DataFrame(.i = i), context(x))
+                       ans <- x$keyBy(ind)$join(idf$keyBy(ind))
                    }
                }
                ans
@@ -212,6 +215,12 @@ setMethods("extractROWS",
 ## setMethod("extractROWS", c("HailTable", "HailWhichPromise"), function(x, i) {
 ##     extractROWS(x, logicalPromise(i))
 ## })
+
+setMethod("context", "HailTable", function(x) {
+    HailContext(x$impl$hc())
+})
+
+setMethod("parent", "HailTableRowContext", function(x) context(hailTable(x)))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Collection
@@ -229,7 +238,7 @@ setMethod("deriveTable", "HailGlobalContext", function(context, expr) {
 })
 
 globalTable <- function(x) {
-    singleRowTable <- RangeHailTable(x$hailContext(), 1L, 1L)
+    singleRowTable <- RangeHailTable(context(x), 1L, 1L)
     joinGlobals(singleRowTable, x)
 }
 

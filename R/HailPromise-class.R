@@ -229,6 +229,10 @@ setMethod("cast", c("ArrayPromise", "TArray"), function(x, type) {
     lapply(x, cast, elementType(type))
 })
 
+setMethod("cast", c("ANY", "HailPrimitiveType"), function(x, type) {
+    as.vector(x, vectorMode(type))
+})
+
 setMethod("cast", c("list", "TArray"), function(x, type) {
     as.typed_list(x, vectorMode(elementType(type)))
 })
@@ -354,16 +358,20 @@ setMethod("lapply", "ArrayPromise", function(X, FUN, ...) {
 ### Comparison
 ###
 
-setMethods("Compare",
-           list(c("HailPromise", "ANY"),
-                c("ANY", "HailPromise")),
-           function(e1, e2) {
-               promiseComparisonOpCall(.Generic, e1, e2)
-           })
+## Need to emulate the Compare group generic here, since there are
+## operator-specific methods for Vector.
+lapply(c("<", ">", ">=", "<=", "==", "!="), function(op) {
+    setMethods(op,
+               list(c("HailPromise", "ANY"),
+                    c("ANY", "HailPromise"),
+                    c("HailPromise", "HailPromise")),
+               function(e1, e2) promiseComparisonOpCall(op, e1, e2))
+})
 
 setMethods("Arith",
            list(c("HailPromise", "ANY"),
-                c("ANY", "HailPromise")),
+                c("ANY", "HailPromise"),
+                c("HailPromise", "HailPromise")),
            function(e1, e2) {
                op <- .Generic
                if (op == "%%")
@@ -372,7 +380,20 @@ setMethods("Arith",
                    op <- "//"
                else if (op == "^")
                    op <- "**"
-               promiseBinaryPrimOpCall(op, e1, e2)
+               if (missing(e2)) {
+                   if (op == "+") e1 else promiseUnaryOpCall(op, e1)
+               } else {
+                   promiseBinaryPrimOpCall(op, e1, e2)
+               }
+           })
+
+setMethods("Logic",
+           list(c("HailPromise", "ANY"),
+                c("ANY", "HailPromise"),
+                c("HailPromise", "HailPromise")),
+           function(e1, e2) {
+               op <- paste0(.Generic, .Generic)
+               promiseMethodCall(e1, op, TBOOLEAN, e2)
            })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -468,6 +489,12 @@ promiseBinaryPrimOpCall <- function(op, left, right) {
 
 unifyTypes <- function(...) {
     Reduce(merge, lapply(list(...), hailType))
+}
+
+promiseUnaryOpCall <- function(op, x) {
+    promiseCall(op, hailType(x), CALL_CONSTRUCTOR=function(op, args) {
+        HailApplyUnaryPrimOp(HailSymbol(op), args[[1L]])
+    }, x)
 }
 
 resolveContext <- function(...) {

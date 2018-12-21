@@ -58,50 +58,71 @@ setAs("ANY", "HailDataFrame", function(from) {
 ### Synchronize underlying table with current columns
 ###
 
-tableForCols <- function(cols, table, context) {
-    if (!is(table, "HailTable"))
-        hailTable(send(DataFrame(cols), context))
-    else table$select(lapply(cols, expr))
+pushCols <- function(cols, src_context, target_context, table = NULL) {
+    if (derivesFrom(src_context, target_context))
+        hailTable(src_context)$select(lapply(cols, expr))
+    else {
+        if (!is.null(table) && length(cols) == 1L) {
+            col <- cols[[1L]]
+            sm <- selfmatch(col)
+            uniq <- sm[seq_along(col) == sm]
+            col[sm[uniq]]
+        } else {
+            hailTable(send(DataFrame(cols), target_context))
+        }
+    }
 }
 
 setGeneric("push", function(x, remote) standardGeneric("push"))
 
 setMethod("push", c("HailDataFrame", "missing"),
-          function(x, remote = hailTable(x)$hailContext()) {
-              push(x, remote)
+          function(x, remote) {
+              push(x, context(x))
           })
 
+scalar <- function(x, remote) {
+    if (!derivesFrom(context(x), remote) && length(ans <- unique(x)) == 1L)
+        ans
+}
+
 setMethods("push",
-           list(c("DataFrame", "is.hail.HailContext"),
-                c("data.frame", "is.hail.HailContext")),
+           list(c("DataFrame", "HailContext"),
+                c("data.frame", "HailContext")),
            function(x, remote) {
+               table <- if (is(x, "HailDataFrame")) hailTable(x)
                if (ncol(x) == 0L) {
-                   return(tableForCols(x,
-                                       if (is(x, "HailDataFrame")) hailTable(x),
-                                       remote))
+                   return(pushCols(x, table, remote))
                }
                cols <- as.list(x)
                ctx <- context(x[[1L]])
                ans_table <- NULL
+
+               ## if (!is.null(table)) {
+               ##     scalars <- Filter(Negate(is.null), lapply(cols, scalar))
+               ##     cols[names(scalars)] <- lapply(scalars, Promise,
+               ##                                    type=, context=table)
+               ## }
                
                repeat {
                    in_ctx <- vapply(cols,
                                     function(xi) identical(context(xi), ctx),
                                     logical(1L))
-                   table <- tableForCols(cols[in_ctx], ctx, remote)
-                   ans_table <- bindCols(ans_table, table)
+                   ctx_table <- pushCols(cols[in_ctx], ctx, remote)
+                   ans_table <- bindCols(ans_table, ctx_table)
                    cols <- cols[!in_ctx]
                    if (length(cols) == 0L)
                        break
                    ctx <- context(cols[[1L]])
                }
                
-               HailDataFrame(ans_table)[names(x)]
+               HailDataFrame(table)[names(x)]
            })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessor methods.
 ###
+
+setMethod("context", "HailDataFrame", function(x) context(hailTable(x)))
 
 setMethod("extractROWS", c("HailDataFrame", "ANY"), function(x, i) {
     HailDataFrame(extractROWS(hailTable(x), i))
@@ -115,7 +136,7 @@ setMethod("[", "HailDataFrame", function(x, i, j, ..., drop = TRUE) {
 })
 
 setReplaceMethod("[", "HailDataFrame", function(x, i, j, ..., value) {
-    df <- callNextMethod() # an invalid HailDataFrame
+    df <- callNextMethod()
     push(df)
 })
 
@@ -210,10 +231,9 @@ readHailDataFrameFromText <- function(file, header = FALSE, sep = "",
 ### Utilities
 ###
 
-setGeneric("escapeColumn", function(x) standardGeneric("escapeColumn"))
+setGeneric("escapeColumn", function(x) x)
 setMethod("escapeColumn", "List", function(x) escapeColumn(as.list(x)))
 setMethod("escapeColumn", "list", function(x) I(x))
 
-setGeneric("ncolsAsDF", function(x) standardGeneric("ncolsAsDF"))
-setMethod("ncolsAsDF", "ANY", function(x) ncol(as.data.frame(escapeColumn(x))))
+setGeneric("ncolsAsDF", function(x) ncol(as.data.frame(escapeColumn(x))))
 

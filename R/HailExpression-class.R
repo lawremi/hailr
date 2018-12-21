@@ -35,6 +35,7 @@ setClassUnion("HailType_OR_NULL", c("HailType", "NULL"))
                      contains="HailExpression")
 
 .HailApply <- setClass("HailApply",
+                       slots=c(name="HailSymbol"),
                        contains=c("HailExpression", "SimpleCall"))
 
 .HailGetField <- setClass("HailGetField",
@@ -67,6 +68,10 @@ setClass("HailBinaryOp",
 
 .HailApplyBinaryPrimOp <- setClass("HailApplyBinaryPrimOp",
                                    contains="HailBinaryOp")
+
+.HailApplyUnaryPrimOp <- setClass("HailApplyUnaryPrimOp",
+                                  slots=c(op="HailSymbol", x="ANY"),
+                                  contains="HailExpression")
 
 .HailArrayMap <- setClass("HailArrayMap",
                           slots=c(name="HailSymbol",
@@ -127,7 +132,7 @@ HailRef <- function(symbol) {
 }
 
 HailApply <- function(name, args) {
-    .HailApply(SimpleCall(name, args))
+    .HailApply(SimpleCall(as(name, "HailSymbol"), args))
 }
 
 HailGetField <- function(container, element) {
@@ -157,6 +162,10 @@ HailApplyComparisonOp <- function(op, left, right) {
 
 HailApplyBinaryPrimOp <- function(op, left, right) {
     .HailApplyBinaryPrimOp(op=op, left=left, right=right)
+}
+
+HailApplyUnaryPrimOp <- function(op, x) {
+    .HailApplyUnaryPrimOp(op=op, x=x)
 }
 
 HailArrayMap <- function(name, array, body) {
@@ -208,15 +217,15 @@ setAs("character", "HailExpression", function(from) {
     hailLiteral(from, HailStr)
 })
 
-setAs("integer", "HailI32", function(from) {
+setAs("integer", "HailExpression", function(from) {
     hailLiteral(from, HailI32)
 })
 
-setAs("numeric", "HailF64", function(from) {
+setAs("numeric", "HailExpression", function(from) {
     hailLiteral(from, HailF64)
 })
 
-setAs("logical", "HailI32", function(from) {
+setAs("logical", "HailExpression", function(from) {
     hailLiteral(from, function(from) {
         if (from)
             HailTrue()
@@ -277,6 +286,12 @@ escape_id <- function(x) {
 }
 
 setMethod("as.character", "HailExpression", function(x) to_ir(x))
+
+setAs("character", "HailSymbol", function(from) HailSymbol(from))
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### show()
+###
 
 setMethod("show", "HailExpression",
           function(object) cat(as.character(object), "\n"))
