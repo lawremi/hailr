@@ -42,7 +42,7 @@ setMethod("[", "Promise", function(x, i, j, ..., drop = TRUE) {
         return(x)
     }
     if (is(i, "Promise")) {
-        ctx <- resolveContext(x, i)
+        ctx <- resolveContext(list(x, i))
     } else {
         ctx <- context(x)
     }

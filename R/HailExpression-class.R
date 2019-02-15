@@ -5,11 +5,11 @@
 ### Expressions in the Hail language.
 ###
 
-setClass("HailExpression", contains=c("Expression", "VIRTUAL"))
-
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Classes
 ###
+
+setClass("HailExpression", contains=c("Expression", "VIRTUAL"))
 
 .HailSymbol <- setClass("HailSymbol", contains="SimpleSymbol")
 
@@ -28,8 +28,6 @@ setClass("HailExpression", contains=c("Expression", "VIRTUAL"))
 .HailNA <- setClass("HailNA", slots=c(type="HailType"),
                     contains="HailExpression")
 
-setClassUnion("HailType_OR_NULL", c("HailType", "NULL"))
-
 .HailRef <- setClass("HailRef",
                      slots=c(symbol="HailSymbol"),
                      contains="HailExpression")
@@ -47,6 +45,8 @@ setClassUnion("HailType_OR_NULL", c("HailType", "NULL"))
                                 prototype=
                                     prototype(elementType="HailExpression"),
                                 contains="SimpleList")
+
+setClassUnion("HailExpressionList_OR_NULL", c("HailExpressionList", "NULL"))
 
 .HailVarArgs <- setClass("HailVarArgs", contains="HailExpressionList")
 
@@ -95,6 +95,18 @@ setClass("HailBinaryOp",
                             altr="HailExpression"),
                     contains="HailExpression")
 
+.Accumulation <- setClass("Accumulation",
+                          slots=c(op="character",
+                                  constructor_args="HailExpressionList",
+                                  init_op_args="HailExpressionList_OR_NULL",
+                                  seq_op_args="HailExpressionList"))
+
+.HailApplyScanOp <- setClass("HailApplyScanOp",
+                             contains=c("Accumulation", "HailExpression"))
+
+.HailApplyAggOp <- setClass("HailApplyAggOp",
+                            contains=c("Accumulation", "HailExpression"))
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Constructors
 ###
@@ -139,7 +151,7 @@ HailGetField <- function(container, element) {
     .HailGetField(container=container, element=element)
 }
 
-HailExpressionList <- function(data) {
+HailExpressionList <- function(data = list()) {
     listData <- lapply(data, as, "HailExpression", strict=FALSE)
     .HailExpressionList(listData=listData)
 }
@@ -182,6 +194,22 @@ HailArrayLen <- function(array) {
 
 HailIf <- function(cond, cnsq, altr) {
     .HailIf(cond=cond, cnsq=cnsq, altr=altr)
+}
+
+Accumulation <- function(op, constructor_args = HailExpressionList(),
+                         init_op_args = NULL,
+                         seq_op_args = HailExpressionList())
+{
+    .Accumulation(op=op, constructor_args=constructor_args,
+                  init_op_args=init_op_args, seq_op_args=seq_op_args)
+}
+
+HailApplyScanOp <- function(accumulation) {
+    .HailApplyScanOp(accumulation)
+}
+
+HailApplyAggOp <- function(accumulation) {
+    .HailApplyAggOp(accumulation)
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -241,28 +269,32 @@ setAs("list", "HailExpression", function(from) {
 
 ir_name <- function(x) sub("^Hail", "", class(x))
 
-setGeneric("to_ir", function(x) as.character(x))
+setGeneric("to_ir", function(x, ...) as.character(x))
 
-setMethod("to_ir", "HailSymbol", function(x) escape_id(name(x)))
+setMethod("to_ir", "HailSymbol", function(x, ...) escape_id(name(x)))
 
 setMethod("to_ir", "HailExpression",
-          function(x) to_ir(c(ir_name(x), ir_args(x))))
+          function(x, ...) to_ir(c(ir_name(x), ir_args(x)), ...))
 
 setMethod("to_ir", "list",
-          function(x) paste0("(",
-                             paste(vapply(x, to_ir, character(1L)),
-                                   collapse=" "),
-                             ")"))
+          function(x, ...) paste0("(",
+                                  paste(vapply(x, to_ir, character(1L), ...),
+                                        collapse=" "),
+                                  ")"))
+
+setMethod("to_ir", "List", function(x, ...) to_ir(as.list(x), ...))
 
 setMethod("to_ir", "HailVarArgs",
-          function(x) paste(vapply(x, to_ir, character(1L)), collapse=" "))
+          function(x, ...) paste(vapply(x, to_ir, character(1L), ...),
+                                 collapse=" "))
+
+setMethod("to_ir", "NULL", function(x, ...) "None")
 
 setGeneric("ir_args", function(x) standardGeneric("ir_args"))
 
 setMethod("ir_args", "HailExpression",
-          function(x) Filter(Negate(is.null),
-                             setNames(lapply(slotNames(x), slot, object=x),
-                                      slotNames(x))))
+          function(x) setNames(lapply(slotNames(x), slot, object=x),
+                               slotNames(x)))
 
 setMethod("ir_args", "HailApply", function(x) c(x@name, x@args))
 

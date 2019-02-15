@@ -46,7 +46,7 @@ setMethod("toJava", "JavaArrayList",
 
 setMethod("toJava", "JavaHashMap",
           function(x, jvm)  {
-              list2env(as.list(x@value))
+              list2env(lapply(x@value, toJava))
           })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

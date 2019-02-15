@@ -27,6 +27,7 @@ Collate:
 	HailContext-class.R
 	HailPromise-class.R
 	HailTable-class.R
+	HailTableExpression-class.R
 	HailDataFrame-class.R
 	HailGRanges-class.R
 	HailMatrixTable-class.R

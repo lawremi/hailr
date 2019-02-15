@@ -34,7 +34,7 @@ setClass("org.apache.spark.sql.Dataset", contains="JavaObject")
 ###
 
 HailTable <- function(impl) {
-    .HailTable(impl=impl)
+    .HailTable(impl=as(impl, "is.hail.table.Table", strict=FALSE))
 }
 
 RangeHailTable <- function(hc, n, n_partitions=NULL) {
@@ -85,7 +85,7 @@ setMethod("hailType", "HailTable",
                 HailGlobalContext(.self))
     },
     select = function(...) {
-        .self$selectStruct(struct(...))
+        .self$selectStruct(struct_expr(...))
     },
     selectStruct = function(expr) {
         if (getOption("verbose")) {
@@ -94,31 +94,35 @@ setMethod("hailType", "HailTable",
         HailTable(.self$impl$mapRows(as.character(expr)))
     },
     selectGlobals = function(...) {
-        expr <- struct(...)
+        expr <- struct_expr(...)
         HailTable(.self$impl$selectGlobal(as.character(expr)))
     },
     annotate = function(...) {
-        s <- struct(...)
-        r <- expr(.self$row())
-        r[names(s)] <- s
-        .self$selectStruct(r)
+        s <- struct_expr(...)
+        r <- lapply(.self$row(), expr)
+        r[names(s)] <- as.list(s)
+        .self$selectStruct(HailMakeStruct(r))
     },
     annotate1 = function(name, value) {
         .self$annotate(setNames(list(value), name))
     },
+    addIndex = function(name) {
+        .self$annotate1(name, HailApplyScanOp(Accumulation("Count")))
+    },
     filter = function(expr) {
-        HailTable(.self$impl$filter(as.character(expr), FALSE))
+        HailTable(.self$impl$filter(as.character(normExpr(expr)), FALSE))
     },
     keyBy = function(...) {
         ## In Python, this also accepts keyword arg select expressions,
         ## but we intentionally do not support that.
         keys <- as.character(c(...))
-        HailTable(.self$impl$keyBy(as.array(keys)))
+        eval(HailTableKeyBy(.self$expr(), keys), context(.self))
     },
     join = function(left, right, how = "inner") {
         check_compatible_keys(left, right)
         HailTable(.self$impl$join(right$impl, how))
     },
+    ## Could record upon construction to avoid repeated Java calls
     count = function() {
         .self$impl$count()
     },
@@ -129,6 +133,9 @@ setMethod("hailType", "HailTable",
         df <- fromJSON(.self$impl$collectJSON())
         df[] <- Map(cast, df, rowType(hailType(.self)))
         df
+    },
+    expr = function() {
+        HailJavaTable(.self$impl$tir())
     }
 )
 
@@ -136,21 +143,28 @@ check_compatible_keys <- function(left, right) {
     identical(keyType(hailType(left)), keyType(hailType(right)))
 }
 
-struct <- function(...) {
+normExpr <- function(x) {
+    if (is.character(x))
+        HailRef(x)
+    else if (is(x, "HailPromise"))
+        expr(x)
+    else x
+}
+
+struct_expr <- function(...) {
     args <- list(...)
     if (length(args) == 1L && is.list(args[[1L]]))
         args <- args[[1L]]
+    args <- lapply(args, normExpr)
     if (is.null(names(args)))
         names(args)[] <- ""
     unnamed <- names(args) == ""
     names(args)[unnamed] <- vapply(args[unnamed],
                                    function(x) name(symbol(x)),
                                    character(1L))
-    args[unnamed] <- lapply(args[unnamed], HailRef)
     HailMakeStruct(args)
 }
 
-## Could record nrow upon construction to avoid repeated Java calls
 setMethod("nrow", "HailTable", function(x) x$count())
 
 hailTable <- function(x) x@hailTable
@@ -187,7 +201,7 @@ setMethod("deriveTable", "HailTableRowContext", function(context, expr) {
 
 setMethod("deriveTable", "HailGlobalContext", function(context, expr) {
     table <- globalTable(src(context)$selectGlobals(x = expr))
-    table$select(x = expr(table$globals()$x))
+    table$select(x = table$globals()$x)
 })
 
 globalTable <- function(x) {
@@ -219,9 +233,7 @@ bindCols <- function(...) {
 
 joinByRowIndex <- function(left, right) {
     idx <- uuid("idx")
-    left_idx <- left$addIndex(idx)$keyBy(idx)
-    right_idx <- right$addIndex(idx)$keyBy(idx)
-    left_idx$join(right_idx)$drop(idx)
+    left$addIndex(idx)$keyBy(idx)$join(right$addIndex(idx)$keyBy(idx))$drop(idx)
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

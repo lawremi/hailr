@@ -355,6 +355,33 @@ setMethod("lapply", "ArrayPromise", function(X, FUN, ...) {
 })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Accumulation
+###
+
+.AccumulationContext <- setClass("AccumulationContext",
+                                 slots=c(parent="HailExpressionContext"),
+                                 contains="HailExpressionContext")
+
+.ScanContext <- setClass("ScanContext", contains="AccumulationContext")
+
+AccumulationContext <- function(parent) .AccumulationContext(parent=parent)
+
+ScanContext <- function(parent) .ScanContext(parent=parent)
+
+setMethod("parent", "AccumulationContext", function(x) x@parent)
+
+setMethod("expressionClass", "ScanContext", function(x) "HailApplyScanOp")
+
+promiseAccumulation <- function(accumulation, context, type) {
+    Promise(type, as(accumulation, expressionClass(context)), parent(context))
+}
+
+setMethod("contextualLength", c("HailPromise", "AccumulationContext"),
+          function(x, context) {
+              promiseAccumulation(Accumulation("Count"), context, TINT64)
+          })
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Comparison
 ###
 
@@ -442,9 +469,9 @@ setMethod("strsplit", "StringPromise",
 
 promiseCall <- function(fun, type, ..., CALL_CONSTRUCTOR) {
     args <- list(...)
+    ctx <- resolveContext(args)
     promises <- vapply(args, is, "Promise", FUN.VALUE=logical(1L))
     args[promises] <- lapply(args[promises], expr)
-    ctx <- resolveContext(...)
     args <- lapply(args, as, expressionClass(ctx), strict=FALSE)
     if (missing(CALL_CONSTRUCTOR)) {
         expr <- do.call(fun, args)
@@ -497,10 +524,9 @@ promiseUnaryOpCall <- function(op, x) {
     }, x)
 }
 
-resolveContext <- function(...) {
-    args <- list(...)
-    isProm <- vapply(args, is, "Promise", FUN.VALUE=logical(1L))
-    ctxs <- Filter(Negate(is.null), lapply(args[isProm], context))
+resolveContext <- function(objs) {
+    isProm <- vapply(objs, is, "Promise", FUN.VALUE=logical(1L))
+    ctxs <- Filter(Negate(is.null), lapply(objs[isProm], context))
     ans <- ctxs[[1L]]
     for (ctx in ctxs[-1L]) {
         if (!identical(ans, ctx)) {
