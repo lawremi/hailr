@@ -15,17 +15,17 @@
 
 setClass("HailPromise",
          slots=c(expr="HailExpression"),
-         contains="SimplePromise")
+         contains=c("SimplePromise", "VIRTUAL"))
 
-setClass("HailAtomicPromise", contains=c("HailPromise", "Vector"))
+setClass("HailAtomicPromise", contains=c("HailPromise", "Vector", "VIRTUAL"))
 
 setClass("BooleanPromise", contains="HailAtomicPromise")
 
-setClass("NumericPromise", contains="HailAtomicPromise")
+setClass("NumericPromise", contains=c("HailAtomicPromise", "VIRTUAL"))
 setClass("Float32Promise", contains="NumericPromise")
 setClass("Float64Promise", contains="NumericPromise")
 
-setClass("IntegralPromise", contains="NumericPromise")
+setClass("IntegralPromise", contains=c("NumericPromise", "VIRTUAL"))
 setClass("Int32Promise", contains="IntegralPromise")
 setClass("Int64Promise", contains="IntegralPromise")
 
@@ -43,7 +43,7 @@ setClass("HailPromiseList",
 setClass("ContainerPromise",
          slots=c(elementHailType="HailType"),
          prototype=prototype(elementHailType=TBOOLEAN),
-         contains=c("HailPromise", "HailPromiseList"))
+         contains=c("HailPromise", "HailPromiseList", "VIRTUAL"))
 ## in general ragged but could be a matrix
 setClass("ArrayPromise", contains="ContainerPromise")
 setClass("NumericArrayPromise", contains="ArrayPromise")
@@ -57,7 +57,7 @@ setClass("DictPromise", contains="ContainerPromise")
 ## treat them as a scalar collection of vectors, in the same way that
 ## a JSON array of consistent objects can be twisted into a data.frame.
 setClass("BaseStructPromise",
-         contains=c("HailPromise", "SimpleHailPromiseList"),
+         contains=c("HailPromise", "SimpleHailPromiseList", "VIRTUAL"),
          slots=c(fieldTypes="HailTypeList"))
 
 ## list-like with unique names
@@ -114,6 +114,10 @@ setMethod("Promise", "missing", function(type, expr, context) {
 
 HailPromiseList <- function(...) {
     .SimpleHailPromiseList(List(...))
+}
+
+dummyPromise <- function(context) {
+    Promise(context, FALSE, TBOOLEAN)
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
