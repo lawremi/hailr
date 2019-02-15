@@ -164,53 +164,6 @@ setMethod("contextualLength", c("HailPromise", "HailTableRowContext"),
 
 src <- function(x) x@src
 
-isSlice <- function(i) length(i) > 0L && identical(i, head(i, 1L):tail(i, 1L))
-
-isHead <- function(i) identical(head(i, 1L), 1L) && isSlice(i)
-
-setMethod("extractROWS", c("HailTable", "HailOrderPromise"), function(x, i) {
-    stopifnot(derivesFrom(context(i), x))
-    o <- uuid("o")
-    x$annotate1(o, i)$orderBy(o)$drop(o)
-})
-
-setMethods("extractROWS",
-           list(c("HailTable", "logical"),
-                c("HailTable", "BooleanPromise")),
-           function(x, i) {
-               uuid <- uuid("i")
-               if (!identical(x, context(i))) {
-                   x[[uuid]] <- i
-                   i <- x[[uuid]]
-               }
-               ### FIXME: what happens when 'i' has NAs? Do we need this?
-               ## x[is.na(i),] <- NA
-               ans <- x$filter(expr(i))
-               if (!is.null(ans[[uuid]]))
-                   ans <- x$drop(uuid)
-               ans
-           })
-
-setMethods("extractROWS",
-           list(c("HailTable", "numeric"),
-                c("HailTable", "NumericPromise")),
-           function(x, i) {
-               if (isHead(i)) {
-                   ans <- x$head(length(i))
-               } else {
-                   ind <- uuid("i")
-                   x[[ind]] <- seq_along_rows(x)
-                   if (isSlice(i)) {
-                       .i <- x[[ind]]
-                       ans <- x$filter(.i >= head(i, 1L) & .i <= tail(i, 1L))
-                   } else {
-                       idf <- push(DataFrame(.i = i), context(x))
-                       ans <- x$keyBy(ind)$join(idf$keyBy(ind))
-                   }
-               }
-               ans
-           })
-
 ### TODO: this needs to drop NAs from 'i'
 ## setMethod("extractROWS", c("HailTable", "HailWhichPromise"), function(x, i) {
 ##     extractROWS(x, logicalPromise(i))

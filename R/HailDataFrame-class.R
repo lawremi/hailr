@@ -97,6 +97,7 @@ setMethods("push",
                ctx <- context(x[[1L]])
                ans_table <- NULL
 
+               ### Fastpath currently disabled while we make the slow path work
                ## if (!is.null(table)) {
                ##     scalars <- Filter(Negate(is.null), lapply(cols, scalar))
                ##     cols[names(scalars)] <- lapply(scalars, Promise,
@@ -115,7 +116,7 @@ setMethods("push",
                    ctx <- context(cols[[1L]])
                }
                
-               HailDataFrame(table)[names(x)]
+               HailDataFrame(ans_table)[names(x)]
            })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -123,10 +124,6 @@ setMethods("push",
 ###
 
 setMethod("context", "HailDataFrame", function(x) context(hailTable(x)))
-
-setMethod("extractROWS", c("HailDataFrame", "ANY"), function(x, i) {
-    HailDataFrame(extractROWS(hailTable(x), i))
-})
 
 setMethod("[", "HailDataFrame", function(x, i, j, ..., drop = TRUE) {
     df <- callNextMethod()
@@ -151,6 +148,71 @@ select <- function(x, vars) {
         return(x)
     HailDataFrame(hailTable(x)$select(lapply(vars, expr)))
 }
+
+with_temps <- function(x, FUN, use.names = FALSE, temps = list(), ...) {
+    temps <- c(temps, list(...))
+    to_push <- vapply(temps,
+                       function(temp) {
+                           !identical(context(temp), x) ||
+                               (use.names && !is(expr(temp), "HailRef"))
+                       },
+                       logical(1L))
+    names(temps)[to_push] <- vapply(names(to_push)[to_push], uuid,
+                                    character(1L))
+    x[names(temps)[to_push]] <- temps[to_push]
+    if (use.names) {
+        nms <- names(temps)
+        nms[!to_push] <- vapply(temps[!to_push],
+                                function(temp) name(symbol(expr(temp))),
+                                character(1L))
+        ans <- FUN(x, nms)
+    } else {
+        temps[to_push] <- as.list(x[to_push])
+        ans <- do.call(FUN, c(list(x), temps))
+    }
+    ans[to_push] <- NULL
+    ans
+}
+
+setMethod("extractROWS", c("HailDataFrame", "HailOrderPromise"),
+          function(x, i) {
+              with_temps(x, function(x, nms) {
+                  x$orderBy(nms, sort_types(i))
+              }, use.names=TRUE, promises(i))
+          })
+
+setMethods("extractROWS",
+           list(c("HailDataFrame", "logical"),
+                c("HailDataFrame", "BooleanPromise")),
+           function(x, i) {
+               with_temps(x, function(x, i) {
+                   x$filter(i)
+               }, i = i)
+           })
+
+isSlice <- function(i) length(i) > 0L && identical(i, head(i, 1L):tail(i, 1L))
+
+isHead <- function(i) identical(head(i, 1L), 1L) && isSlice(i)
+
+setMethods("extractROWS",
+           list(c("HailDataFrame", "numeric"),
+                c("HailDataFrame", "NumericPromise")),
+           function(x, i) {
+               if (isHead(i)) {
+                   ans <- x$head(length(i))
+               } else {
+                   ind <- seq_along_rows(x)
+                   if (isSlice(i)) {
+                       ans <- x$filter(ind >= head(i, 1L) & ind <= tail(i, 1L))
+                   } else {
+                       idf <- push(DataFrame(ind = i), context(x))
+                       ans <- with_temps(x, function(x, key) {
+                           idf$keyBy("ind")$join(x$keyBy(key))
+                       }, use.names=TRUE, ind)
+                   }
+               }
+               ans
+           })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Summarizing
