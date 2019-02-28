@@ -290,6 +290,11 @@ setMethod("to_ir", "HailVarArgs",
 
 setMethod("to_ir", "NULL", function(x, ...) "None")
 
+setMethod("to_ir", "logical", function(x, ...) {
+    stopifnot(isTRUEorFALSE(x))
+    if (x) "True" else "False"
+})
+
 setGeneric("ir_args", function(x) standardGeneric("ir_args"))
 
 setMethod("ir_args", "HailExpression",
