@@ -38,6 +38,12 @@ setGeneric("constructObject",
            function(target, path, args) standardGeneric("constructObject"),
            signature="target")
 
+setMethod("constructObject", "JavaMethodTarget",
+          function(target, path, args) {
+              fromJava(constructObject(impl(target), path,
+                                       toJava(args, jvm(target))))
+          })
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### jvm() accessor
 ###
