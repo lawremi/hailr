@@ -222,7 +222,7 @@ setMethod("hailType", "ContainerPromise",
 setGeneric("cast", function(x, type) as(x, promiseClass(type)))
 
 setMethod("cast", c("HailPromise", "HailPrimitiveType"), function(x, type) {
-    if (!identical(hailType(x), type)) {
+    if (!identical(vectorMode(hailType(x)), vectorMode(type))) {
         promiseMethodCall(x, paste0("to", type), type)
     } else {
         x
@@ -234,7 +234,7 @@ setMethod("cast", c("ArrayPromise", "TArray"), function(x, type) {
 })
 
 setMethod("cast", c("ANY", "HailPrimitiveType"), function(x, type) {
-    as.vector(x, vectorMode(type))
+    if (is.null(x) && optional(type)) NULL else as.vector(x, vectorMode(type))
 })
 
 setMethod("cast", c("list", "TArray"), function(x, type) {
@@ -246,25 +246,6 @@ setMethod("as.list", "ContainerPromise", as.list.Promise)
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Iteration
 ###
-
-## Most Hail expressions happen on scalars. When operating on a column
-## from a HailTable, the promise has an expression refering to the
-## 'row' object that exists in the mapRows() context, which we call
-## the HailTableRowContext. Aggregations will "pop" that row context
-## by calling a method directly on the table object. Similarily,
-## constant expressions will not talk to Hail at all (NULL
-## context). When lapply()ing over a column, we
-## could have a ScalarContext, which would often want to rollup to the
-## HailTableRowContext, except for aggregations, where e.g. length()
-## would always return 1, and mean() would always be the identity
-## function, etc. When lapply()ing over an array column, we need to
-## tell Hail to map over the individual elements, just as we asked it
-## to map over the rows for the table-level operations. This means an
-## ArrayApplyContext, which also has special behavior for aggregations,
-## where we can coalesce certain ones (like filter, any, all). Also,
-## there are some vectorized arithmetic operations. For these special
-## cases, the promise pops the special context, so that lapply() knows
-## not to embed it within the ArrayMap instruction.
 
 .ArrayApplyContext <- setClass("ArrayApplyContext",
                                slots=c(arrayPromise="ArrayPromise",

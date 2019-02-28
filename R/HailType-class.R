@@ -11,24 +11,36 @@
 ###
 
 setClass("is.hail.expr.types.virtual.Type", contains="JavaObject")
-setClass("HailType")
+setClass("HailType",
+         slots=c(optional="logical"),
+         prototype=list(optional=FALSE),
+         validity=function(object) {
+             if (!isTRUEorFALSE(object@optional))
+                 "'optional' must be TRUE or FALSE"
+         })
 
 setClass("HailTypeList", prototype=list(elementType="HailType"),
          contains="SimpleList")
 
-setClass("HailPrimitiveType", contains=c("HailType", "VIRTUAL"))
+setClass("HailPrimitiveType", contains="HailType")
 
 setClass("is.hail.expr.types.virtual.TBoolean",
          contains="is.hail.expr.types.virtual.Type")
+setClass("is.hail.expr.types.virtual.TBooleanOptional",
+         contains="is.hail.expr.types.virtual.TBoolean")
 TBOOLEAN <- setClass("TBoolean", contains="HailPrimitiveType")()
 
 setClass("is.hail.expr.types.virtual.TNumeric",
          contains="is.hail.expr.types.virtual.Type")
 setClass("is.hail.expr.types.virtual.TFloat32",
          contains="is.hail.expr.types.virtual.TNumeric")
+setClass("is.hail.expr.types.virtual.TFloat32Optional",
+         contains="is.hail.expr.types.virtual.TNumeric")
 setClass("is.hail.expr.types.virtual.TFloat64",
          contains="is.hail.expr.types.virtual.TNumeric")
-setClass("TNumeric", contains=c("HailPrimitiveType", "VIRTUAL"))
+setClass("is.hail.expr.types.virtual.TFloat64Optional",
+         contains="is.hail.expr.types.virtual.TNumeric")
+setClass("TNumeric", contains="HailPrimitiveType")
 TFLOAT32 <- setClass("TFloat32", contains="TNumeric")()
 TFLOAT64 <- setClass("TFloat64", contains="TNumeric")()
 
@@ -36,17 +48,27 @@ setClass("is.hail.expr.types.virtual.TIntegral",
          contains="is.hail.expr.types.virtual.Type")
 setClass("is.hail.expr.types.virtual.TInt32",
          contains="is.hail.expr.types.virtual.TIntegral")
-setClass("TIntegral", contains=c("TNumeric", "VIRTUAL"))
+setClass("is.hail.expr.types.virtual.TInt32Optional",
+         contains="is.hail.expr.types.virtual.TIntegral")
+setClass("is.hail.expr.types.virtual.TInt64",
+         contains="is.hail.expr.types.virtual.TIntegral")
+setClass("is.hail.expr.types.virtual.TInt64Optional",
+         contains="is.hail.expr.types.virtual.TIntegral")
+setClass("TIntegral", contains="TNumeric")
 TINT32 <- setClass("TInt32", contains="TIntegral")()
 TINT64 <- setClass("TInt64", contains="TIntegral")()
 
 setClass("is.hail.expr.types.virtual.TString",
          contains="is.hail.expr.types.virtual.Type")
+setClass("is.hail.expr.types.virtual.TStringOptional",
+         contains="is.hail.expr.types.virtual.TString")
 TSTRING <- setClass("TString", contains="HailPrimitiveType")()
 
 ## raw vector
 setClass("is.hail.expr.types.virtual.TBinary",
          contains="is.hail.expr.types.virtual.Type")
+setClass("is.hail.expr.types.virtual.TBinaryOptional",
+         contains="is.hail.expr.types.virtual.TBinary")
 setClass("TBinary", contains="HailType")
 
 setClass("is.hail.expr.types.virtual.TContainer",
@@ -57,8 +79,7 @@ setClass("is.hail.expr.types.virtual.TSet",
          contains="is.hail.expr.types.virtual.TContainer")
 setClass("is.hail.expr.types.virtual.TDict",
          contains="is.hail.expr.types.virtual.TContainer")
-setClass("TContainer", slots=c(elementType="HailType"),
-         contains=c("HailType", "VIRTUAL"))
+setClass("TContainer", slots=c(elementType="HailType"), contains="HailType")
 .TArray <- setClass("TArray", contains="TContainer")
 setClass("TSet", contains="TContainer")
 setClass("TDict", contains="TContainer")
@@ -70,7 +91,7 @@ setClass("is.hail.expr.types.virtual.TTuple",
 setClass("is.hail.expr.types.virtual.TStruct",
          contains="is.hail.expr.types.virtual.TBaseStruct")
 setClass("TBaseStruct",
-         contains=c("HailType", "HailTypeList", "VIRTUAL"))
+         contains=c("HailType", "HailTypeList"))
 setClass("TStruct",
          contains="TBaseStruct",
          validity=function(object) {
@@ -93,6 +114,8 @@ setClass("TInterval", slots=c(pointType="HailType"), contains="ComplexType")
 ## Variant call
 setClass("is.hail.expr.types.virtual.TCall",
          contains="is.hail.expr.types.virtual.ComplexType")
+setClass("is.hail.expr.types.virtual.TCallOptional",
+         contains="is.hail.expr.types.virtual.TCall")
 setClass("TCall", contains="ComplexType")
 
 ## Defined by a genome, chromosome, and position (like a SNP)
@@ -184,12 +207,15 @@ rowPartitionKey <- function(x) x@rowPartitionKey
 paramTypes <- function(x) x@paramTypes
 returnType <- function(x) x@returnType
 
+optional <- function(x) x@optional
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Coercion (between Java and R representations)
 ###
 
 setAs("is.hail.expr.types.virtual.Type", "HailType", function(from) {
-    new(sub("^is\\.hail\\.expr\\.types(\\.virtual)?\\.", "", class(from)))
+    new(sub("^is\\.hail\\.expr\\.types(\\.virtual)?\\.", "", class(from)),
+        optional=grepl("Optional$", class(from)))
 })
 
 javaHailType <- function(x, jvm) {
