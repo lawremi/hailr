@@ -8,7 +8,6 @@ test_HailPromise_operators <- function() {
                        f = integer_list(1:3, integer(0L), 5:7),
                        stringsAsFactors = FALSE
                        )
-    options(verbose=TRUE)
     kt <- send(rows, hail())
 
     do_transform <- function(x)
@@ -54,6 +53,8 @@ test_HailPromise_operators <- function() {
         transform(x,
                   x35 = FALSE,
                   x36 = TRUE)
+
+    options(verbose=TRUE)
 
     result <- as.data.frame(head(do_transform2(kt), 1L))
     expected <- head(do_transform(rows), 1L)

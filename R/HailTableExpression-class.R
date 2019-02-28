@@ -30,13 +30,13 @@ setClass("UnaryHailTableExpression",
                            contains="UnaryHailTableExpression")
 
 .HailTableKeyBy <- setClass("HailTableKeyBy",
-                            slots=c(keys="character", is_sorted="logical"),
+                            slots=c(keys="CharacterList", is_sorted="logical"),
                             prototype=prototype(is_sorted=FALSE),
                             contains="UnaryHailTableExpression",
                             validity=function(object) {
                                 c(if (!isTRUEorFALSE(object@is_sorted))
                                     "@is_sorted must be TRUE or FALSE",
-                                  if (anyNA(object@keys))
+                                  if (anyNA(unlist(object@keys)))
                                     "@keys must not contain NAs")  
                             })
 
@@ -50,7 +50,7 @@ HailJavaTable <- function(child) {
 
 HailTableKeyBy <- function(child, keys, is_sorted=FALSE) {
     .HailTableKeyBy(child=as(child, "HailTableExpression", strict=FALSE),
-                    keys=keys, is_sorted=is_sorted)
+                    keys=as(keys, "CharacterList"), is_sorted=is_sorted)
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -70,17 +70,18 @@ setMethod("to_ir", "is.hail.expr.ir.TableIR", function(x, substitutor) {
 setMethod("toJava", "HailTableExpression", function(x, jvm) {
     substitutor <- Substitutor("table")
     ir <- to_ir(x, substitutor)
-    jvm$is$hail$expr$ir$IRParser$
+    jir <- jvm$is$hail$expr$ir$IRParser$
         parse_table_ir(ir, JavaHashMap(list()),
                        JavaHashMap(substitutor$substitutions))
+    toJava(jir)
 })
 
-setMethod("toJava", "HailJavaTable", function(x, jvm) child(x))
+setMethod("toJava", "HailJavaTable", function(x, jvm) toJava(child(x)))
 
 setMethod("eval", c("HailTableExpression", "HailContext"),
           function(expr, envir, enclos) {
               hc <- envir$impl
-              HailTable(jvm(hc)$is$hail$table$Table(hc, expr))
+              HailTable(jvm(hc)$is$hail$table$Table$new(hc, expr))
           })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
