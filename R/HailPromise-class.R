@@ -89,6 +89,7 @@ setClass("HailOrderPromise", contains=c("HailPromise", "OrderPromise"))
 ### Construction.
 ###
 
+### FIXME: 'type' should come last since we can often infer the type from expr
 setGeneric("Promise", function(type, expr, context) {
     expr <- as(expr, expressionClass(context), strict=FALSE)
     new2(promiseClass(type), expr=expr, context=context, check=FALSE)
@@ -239,6 +240,11 @@ setMethod("cast", c("ANY", "HailPrimitiveType"), function(x, type) {
 
 setMethod("cast", c("list", "TArray"), function(x, type) {
     as.typed_list(x, vectorMode(elementType(type)))
+})
+
+setMethod("cast", c("data.frame", "TStruct"), function(x, type) {
+    x[] <- Map(cast, x, type)
+    x
 })
 
 setMethod("as.list", "ContainerPromise", as.list.Promise)

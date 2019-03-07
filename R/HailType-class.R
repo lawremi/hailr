@@ -125,9 +125,10 @@ setClass("TLocus", contains="ComplexType")
 
 setClass("is.hail.expr.types.TableType",
          contains="is.hail.expr.types.virtual.Type")
-setClass("TableType", slots=c(rowType="TStruct", globalType="TStruct",
-                              keys="character"),
-         contains="HailType")
+.TableType <- setClass("TableType",
+                       slots=c(rowType="TStruct", globalType="TStruct",
+                               keys="character"),
+                       contains="HailType")
 
 ## The schema of a MatrixTable
 setClass("is.hail.expr.types.MatrixType",
@@ -183,6 +184,10 @@ TArray <- function(elementType) {
     .TArray(elementType=elementType)
 }
 
+TableType <- function(rowType, globalType, keys) {
+    .TableType(rowType=rowType, globalType=globalType, keys=keys)
+}
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessors
 ###
@@ -197,7 +202,15 @@ pointType <- function(x) x@pointType
 rowType <- function(x) x@rowType
 globalType <- function(x) x@globalType
 keys <- function(x) x@keys
+`keys<-` <- function(x, value) {
+    x@keys <- value
+    x
+}
 keyType <- function(x) unname(as.list(rowType(x))[keys(x)])
+valueType <- function(x) {
+    rt <- rowType(x)
+    rt[setdiff(names(rt), keys(x))]
+}
 
 colTableType <- function(x) x@colTableType
 rowTableType <- function(x) x@rowTableType

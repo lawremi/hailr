@@ -7,19 +7,17 @@
 ### from a HailTable (and serve as columns in a DataFrame).
 ###
 
-setClass("is.hail.table.Table", contains="JavaObject")
-
 setClass("org.apache.spark.sql.Dataset", contains="JavaObject")
 
 ### This is a reference class, because:
-### (1) It holds a reference to the Hail table, although that is immutable.
-### (2) Practically it would be infeasible to directly map the Hail API to R
+### (1) Practically it would be infeasible to directly map the Hail API to R
 ###     top-level functions due to name collisions.
-### (3) This effectively reimplements the Python glue, so it seems natural
+### (2) This effectively reimplements the Python glue, so it seems natural
 ###     for it to be structured like Python, or at least the non-canonical
 ###     syntax indicates the presence of an external interface.
 .HailTable <- setRefClass("HailTable",
-                          fields=c(impl="is.hail.table.Table"))
+                          fields=c(expr="HailTableExpression",
+                                   context="HailContext"))
 
 .HailTableRowContext <- setClass("HailTableRowContext",
                                  slots=c(hailTable="HailTable"),
@@ -33,8 +31,9 @@ setClass("org.apache.spark.sql.Dataset", contains="JavaObject")
 ### Construction
 ###
 
-HailTable <- function(impl) {
-    .HailTable(impl=as(impl, "is.hail.table.Table", strict=FALSE))
+HailTable <- function(expr, context) {
+    .HailTable(expr=as(expr, "HailTableExpression", strict=FALSE),
+               context=context)
 }
 
 RangeHailTable <- function(hc, n, n_partitions=NULL) {
@@ -44,11 +43,11 @@ RangeHailTable <- function(hc, n, n_partitions=NULL) {
 
 setMethod("transmit", c("org.apache.spark.sql.Dataset", "is.hail.HailContext"),
           function(x, dest) {
-              jvm(dest)$is$hail$table$Table$fromDF(dest, x,
-                                                   keys=JavaArrayList())
+              keys <- JavaArrayList()
+              jvm(dest)$is$hail$table$Table$pyFromDF(x, keys)
           })
 
-setMethod("unmarshal", c("is.hail.table.Table", "ANY"),
+setMethod("unmarshal", c("is.hail.expr.ir.TableIR", "ANY"),
           function(x, skeleton) unmarshal(HailTable(x), skeleton))
 
 HailTableRowContext <- function(hailTable) {
@@ -63,8 +62,7 @@ HailGlobalContext <- function(src) {
 ### Accessors
 ###
 
-setMethod("hailType", "HailTable",
-          function(x) as(x$impl$tir()$typ(), "HailType"))
+setMethod("hailType", "HailTable", function(x) hailType(x$expr))
 
 ## We lazily (as features are needed) reimplement the Python API
 
@@ -78,7 +76,7 @@ setMethod("hailType", "HailTable",
         row[setdiff(names(row), .self$keys())]
     },
     keys = function() {
-        as.character(.self$impl$key())
+        keys(hailType(.self))
     },
     globals = function() {
         Promise(globalType(hailType(.self)), HailRef(HailSymbol("global")),
@@ -91,11 +89,11 @@ setMethod("hailType", "HailTable",
         if (getOption("verbose")) {
             message("select: {", as.character(expr), "}")
         }
-        HailTable(.self$impl$mapRows(as.character(expr)))
+        HailTable(HailMapRows(.self$expr, expr), .self$context)
     },
     selectGlobals = function(...) {
         expr <- struct_expr(...)
-        HailTable(.self$impl$selectGlobal(as.character(expr)))
+        HailTable(HailMapGlobals(.self$expr, expr), .self$context)
     },
     annotate = function(...) {
         s <- struct_expr(...)
@@ -110,7 +108,7 @@ setMethod("hailType", "HailTable",
         .self$annotate1(name, HailApplyScanOp(Accumulation("Count")))
     },
     filter = function(expr) {
-        HailTable(.self$impl$filter(as.character(normExpr(expr)), FALSE))
+        HailTable(TableFilter(.self$expr, normExpr(expr)), .self$context)
     },
     keyBy = function(...) {
         ## In Python, this also accepts keyword arg select expressions,
@@ -118,24 +116,20 @@ setMethod("hailType", "HailTable",
         keys <- as.character(c(...))
         eval(HailTableKeyBy(.self$expr(), keys), context(.self))
     },
-    join = function(left, right, how = "inner") {
+    join = function(right, how = "inner") {
+        left <- .self
         check_compatible_keys(left, right)
-        HailTable(.self$impl$join(right$impl, how))
+        HailTable(HailTableJoin(left, right, how, left$keys()), .self$context)
     },
     ## Could record upon construction to avoid repeated Java calls
     count = function() {
-        .self$impl$count()
+        eval(HailTableCount(.self$expr), .self$context)
     },
     head = function(n) {
-        HailTable(.self$impl$head(n))
+        HailTable(HailTableHead(.self$expr, n), .self$context)
     },
-    collect = function() {
-        df <- fromJSON(.self$impl$collectJSON())
-        df[] <- Map(cast, df, rowType(hailType(.self)))
-        df
-    },
-    expr = function() {
-        HailJavaTable(.self$impl$tir())
+    collect = function() { # as an array of row structs, not a local R object
+        Promise(expr=HailTableCollect(.self$expr)$rows, context=.self$context)
     }
 )
 

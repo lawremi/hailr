@@ -48,6 +48,8 @@ HailContext <- function(impl) {
 setMethod("expressionClass", "HailExpressionContext",
           function(x) "HailExpression")
 
+setMethod("jvm", "HailContext", function(x) jvm(x$impl))
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Comparison
 ###
@@ -68,8 +70,13 @@ setMethod("same", c("is.hail.HailContext", "is.hail.HailContext"),
 
 setMethod("eval", c("HailExpression", "HailExpressionContext"),
           function (expr, envir, enclos) {
-              df <- deriveTable(envir, expr)$collect()
-              df[[1L]]
+              fulfill(lapply(deriveTable(envir, expr)$collect(), `[[`, 1L))
+          })
+
+setMethod("eval", c("HailExpression", "HailContext"),
+          function(expr, envir, enclos) {
+              ans <- fromJSON(jvm(envir)$expr$ir$Interpret$interpretJSON(expr))
+              cast(ans, hailType(expr))
           })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
