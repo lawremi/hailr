@@ -11,7 +11,7 @@
 ### Classes
 ###
 
-setClass("is.hail.expr.ir.TableIR", contains="JavaObject")
+setClass("is.hail.expr.ir.TableIR", contains="is.hail.expr.ir.BaseIR")
 
 setClass("HailTableExpression",
          contains=c("HailExpression", "VIRTUAL"))
@@ -40,13 +40,13 @@ setClass("UnaryHailTableExpression",
                                     "@keys must not contain NAs")  
                             })
 
-.HailMapRows <- setClass("HailMapRows",
-                         slots=c(expr="HailExpression"),
-                         contains="UnaryHailTableExpression")
+.HailTableMapRows <- setClass("HailTableMapRows",
+                              slots=c(expr="HailExpression"),
+                              contains="UnaryHailTableExpression")
 
-.HailMapGlobals <- setClass("HailMapGlobals",
-                            slots=c(expr="HailExpression"),
-                            contains="UnaryHailTableExpression")
+.HailTableMapGlobals <- setClass("HailTableMapGlobals",
+                                 slots=c(expr="HailExpression"),
+                                 contains="UnaryHailTableExpression")
 
 .HailTableFilter <- setClass("HailTableFilter",
                              slots=c(pred="HailExpression"),
@@ -64,6 +64,22 @@ setClass("UnaryHailTableExpression",
                                    "@keys must not contain NAs")
                            })
 
+.HailTableHead <- setClass("HailTableHead",
+                           slots=c(n="integer"),
+                           validity=function(object) {
+                               if (!isSingleInteger(object@n))
+                                   "@n must be single, non-NA integer"
+                           },
+                           contains="UnaryHailTableExpression")
+
+.HailTableCollect <- setClass("HailTableCollect",
+                              slots=c(child="HailTableExpression"),
+                              contains="HailExpression")
+
+.HailTableCount <- setClass("HailTableCount",
+                            slots=c(child="HailTableExpression"),
+                            contains="HailExpression")
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Constructors
 ###
@@ -72,12 +88,12 @@ HailJavaTable <- function(child) {
     .HailJavaTable(child=child)
 }
 
-HailMapRows <- function(child, expr) {
-    .HailMapRows(child=child, expr=expr)
+HailTableMapRows <- function(child, expr) {
+    .HailTableMapRows(child=child, expr=expr)
 }
 
-HailMapGlobals <- function(child, expr) {
-    .HailMapGlobals(child=child, expr=expr)
+HailTableMapGlobals <- function(child, expr) {
+    .HailTableMapGlobals(child=child, expr=expr)
 }
 
 HailTableKeyBy <- function(child, keys, is_sorted=FALSE) {
@@ -93,11 +109,31 @@ HailTableJoin <- function(left, right, type, key) {
     .HailTableJoin(left=left, right=right, type=type, key=key)
 }
 
+HailTableCount <- function(child) {
+    .HailTableCount(child=child)
+}
+
+HailTableHead <- function(child, n) {
+    .HailTableHead(child=child, n=n)
+}
+
+HailTableCollect <- function(child) {
+    .HailTableCollect(child=child)
+}
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessors
 ###
 
 child <- function(x) x@child
+
+setMethod("context", "is.hail.expr.ir.TableIR", function(x) {
+    HailContext(jvm(x))
+})
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Type inference
+###
 
 setMethod("hailType", "is.hail.expr.ir.TableIR",
           function(x) as(x$typ(), "HailType"))
@@ -120,22 +156,33 @@ setMethod("hailType", "HailTableJoin", function(x) {
               keys=unique(c(keys(lt), keys(rt))))
 })
 
+setMethod("hailType", "HailTableCount", function(x) TINT64)
+
+setMethod("hailType", "HailTableCollect", function(x) {
+    ttable <- hailType(child(x))
+    TStruct(rows=TArray(rowType(ttable)), globals=globalType(ttable))
+})
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Coercion
 ###
 
 setMethod("to_ir", "is.hail.expr.ir.TableIR", function(x, substitutor) {
-    substitutor$substitute(x)
+    substitutor$substitute(x, "table")
 })
 
-setMethod("toJava", "HailTableExpression", function(x, jvm) {
-    substitutor <- Substitutor("table")
+setMethod("toJava", "HailExpression", function(x, jvm) {
+    substitutor <- Substitutor()
     ir <- to_ir(x, substitutor)
-    jir <- jvm$is$hail$expr$ir$IRParser$
-        parse_table_ir(ir, JavaHashMap(list()),
-                       JavaHashMap(substitutor$substitutions))
+    PARSE <- jvm$is$hail$expr$ir$IRParser[[parseMethod(x)]]
+    jir <- PARSE(ir, JavaHashMap(list()),
+                 JavaHashMap(substitutor$substitutions))
     toJava(jir)
 })
+
+setGeneric("parseMethod", function(x) standardGeneric("parseMethod"))
+setMethod("parseMethod", "HailExpression", function(x) "parse_value_ir")
+setMethod("parseMethod", "HailTableExpression", function(x) "parse_table_ir")
 
 setMethod("toJava", "HailJavaTable", function(x, jvm) toJava(child(x)))
 
@@ -145,24 +192,27 @@ setMethod("eval", c("HailTableExpression", "HailContext"),
               HailTable(jvm(hc)$is$hail$table$Table$new(hc, expr))
           })
 
+setAs("is.hail.expr.ir.TableIR", "HailTableExpression", function(from) {
+    HailJavaTable(from)
+})
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Utilities
 ###
 
 .Substitutor <-
     setRefClass("Substitutor",
-                fields = c(label="character",
-                           count="integer",
+                fields = c(count="integer",
                            substitutions="list"),
                 methods = list(
-                    substitute = function(x) {
-                        key <- paste0("__", .self$label, "_", .self$count)
+                    substitute = function(x, label) {
+                        key <- paste0("__", label, "_", .self$count)
                         .self$substitutions[[key]] <- x
                         .self$count <- .self$count + 1L
                         key
                     }
                 ))
 
-Substitutor <- function(label) {
-    .Substitutor(label=label, count=0L)
+Substitutor <- function() {
+    .Substitutor(count=0L)
 }

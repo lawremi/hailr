@@ -22,6 +22,7 @@ HailDataFrame <- function(table) {
     ### FIXME: this will query for the length() of every column. We
     ### could just query the 'table' and set the length on the promise
     ### (requires adding a nullable length slot).
+    length(as.list(table$row())[[1L]])
     .HailDataFrame(DataFrame(as.list(table$row())),
                    hailTable=table,
                    metadata=as.list(table$globals()))
@@ -58,18 +59,11 @@ setAs("ANY", "HailDataFrame", function(from) {
 ### Synchronize underlying table with current columns
 ###
 
-pushCols <- function(cols, src_context, target_context, table = NULL) {
+pushCols <- function(cols, src_context, target_context) {
     if (derivesFrom(src_context, target_context))
-        hailTable(src_context)$select(lapply(cols, expr))
+        hailTable(src_context)$project(cols)
     else {
-        if (!is.null(table) && length(cols) == 1L) {
-            col <- cols[[1L]]
-            sm <- selfmatch(col)
-            uniq <- sm[seq_along(col) == sm]
-            col[sm[uniq]]
-        } else {
-            hailTable(send(DataFrame(cols), target_context))
-        }
+        hailTable(send(DataFrame(cols), target_context))
     }
 }
 
@@ -91,7 +85,7 @@ setMethods("push",
            function(x, remote) {
                table <- if (is(x, "HailDataFrame")) hailTable(x)
                if (ncol(x) == 0L) {
-                   return(pushCols(x, table, remote))
+                   return(send(x, remote))
                }
                cols <- as.list(x)
                ctx <- context(x[[1L]])
@@ -125,28 +119,33 @@ setMethods("push",
 
 setMethod("context", "HailDataFrame", function(x) context(hailTable(x)))
 
-setMethod("[", "HailDataFrame", function(x, i, j, ..., drop = TRUE) {
-    df <- callNextMethod()
-    if (!identical(names(df), names(x)))
-        hailTable(df) <- hailTable(df)$select(lapply(df, expr))
-    df
+setMethod("extractCOLS", "HailDataFrame", function(x, i) {
+    ans <- callNextMethod()
+    if (!identical(names(ans), names(x)))
+        select(ans, names(ans))
+    else ans
 })
 
-setReplaceMethod("[", "HailDataFrame", function(x, i, j, ..., value) {
-    df <- callNextMethod()
-    push(df)
+push_replacement <- function(x, i, value) {
+    if (is.null(value)) {
+        select(x, names(x))
+    } else {
+        push(x)
+    }
+}
+
+setMethod("replaceCOLS", "HailDataFrame", function(x, i, value) {
+    push_replacement(callNextMethod(), i, value)   
 })
 
 setMethod("setListElement", "HailDataFrame", function(x, i, value) {
-    df <- callNextMethod()
-    push(df)
+    push_replacement(callNextMethod(), i, value)
 })
 
-## like dplyr's transmute()
-select <- function(x, vars) {
-    if (identical(as.list(x), vars))
+select <- function(x, names) {
+    if (identical(names(x), names))
         return(x)
-    HailDataFrame(hailTable(x)$select(lapply(vars, expr)))
+    HailDataFrame(hailTable(x)$select(names))
 }
 
 with_temps <- function(x, FUN, use.names = FALSE, temps = list(), ...) {

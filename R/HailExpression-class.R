@@ -9,6 +9,8 @@
 ### Classes
 ###
 
+setClass("is.hail.expr.ir.BaseIR", contains="JavaObject")
+
 setClass("HailExpression", contains=c("Expression", "VIRTUAL"))
 
 .HailSymbol <- setClass("HailSymbol", contains="SimpleSymbol")
@@ -45,6 +47,11 @@ setClass("HailExpression", contains=c("Expression", "VIRTUAL"))
                                 prototype=
                                     prototype(elementType="HailExpression"),
                                 contains="SimpleList")
+
+.HailSymbolList <- setClass("HailSymbolList",
+                            prototype=
+                                prototype(elementType="HailSymbol"),
+                            contains="HailExpressionList")
 
 setClassUnion("HailExpressionList_OR_NULL", c("HailExpressionList", "NULL"))
 
@@ -94,6 +101,17 @@ setClass("HailBinaryOp",
                             cnsq="HailExpression",
                             altr="HailExpression"),
                     contains="HailExpression")
+
+.HailInsertFields <- setClass("HailInsertFields",
+                              slots=c(old="HailExpression",
+                                      field_order="NULL",
+                                      fields="HailVarArgs"),
+                              contains="HailExpression")
+
+.HailSelectFields <- setClass("HailSelectFields",
+                              slots=c(old="HailExpression",
+                                      fields="HailSymbolList"),
+                              contains="HailExpression")
 
 .Accumulation <- setClass("Accumulation",
                           slots=c(op="character",
@@ -196,6 +214,14 @@ HailIf <- function(cond, cnsq, altr) {
     .HailIf(cond=cond, cnsq=cnsq, altr=altr)
 }
 
+HailInsertFields <- function(old, fields) {
+    .HailInsertFields(old=old, fields=HailVarArgs(fields))
+}
+
+HailSelectFields <- function(old, fields) {
+    .HailSelectFields(old=old, fields=fields)
+}
+
 Accumulation <- function(op, constructor_args = HailExpressionList(),
                          init_op_args = NULL,
                          seq_op_args = HailExpressionList())
@@ -216,6 +242,8 @@ HailApplyAggOp <- function(accumulation) {
 ### Accessors
 ###
 
+setMethod("$", "HailExpression", function(x, name) x[[name]])
+
 setMethod("[[", "HailExpression", function(x, i, j, ...) {
     stopifnot(missing(j), missing(...), isSingleString(i))
     HailGetField(x, HailSymbol(i))
@@ -226,9 +254,16 @@ setMethod("[[", "HailMakeStruct", function(x, i, j, ...) {
     as.list(x)[[i]]
 })
 
-setMethod("hailType", "HailExpression", function(x) x@type)
-
 symbol <- function(x) x@symbol
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Type inference
+###
+
+setMethod("hailType", "HailNA", function(x) x@type)
+setMethod("hailType", "HailMakeArray", function(x) x@type)
+setMethod("hailType", "HailGetField",
+          function(x) hailType(x@container)[[name(x@element)]])
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Coercion
@@ -285,8 +320,12 @@ setMethod("to_ir", "list",
 setMethod("to_ir", "List", function(x, ...) to_ir(as.list(x), ...))
 
 setMethod("to_ir", "HailVarArgs",
-          function(x, ...) paste(vapply(x, to_ir, character(1L), ...),
-                                 collapse=" "))
+          function(x, ...) {
+              if (is.character(names(x)))
+                  x <- mapply(list, lapply(names(x), HailSymbol), x)
+              paste(vapply(x, to_ir, character(1L), ...),
+                    collapse=" ")
+          })
 
 setMethod("to_ir", "NULL", function(x, ...) "None")
 

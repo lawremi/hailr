@@ -7,7 +7,7 @@ Maintainer: Michael Lawrence <michafla@gene.com>
 Description: Enables computing on genotype data within Hail (and Spark)
              by writing R code based on Bioconductor APIs
 License: MIT
-Imports: SummarizedExperiment, S4Vectors (>= 0.21.8), IRanges, GenomicRanges,
+Imports: SummarizedExperiment, S4Vectors (>= 0.21.15), IRanges, GenomicRanges,
 	 jsonlite, utils, tools
 Depends:
     R (>= 3.2.0),
@@ -26,8 +26,8 @@ Collate:
 	HailExpression-class.R
 	HailContext-class.R
 	HailPromise-class.R
-	HailTable-class.R
 	HailTableExpression-class.R
+	HailTable-class.R
 	HailDataFrame-class.R
 	HailGRanges-class.R
 	HailMatrixTable-class.R

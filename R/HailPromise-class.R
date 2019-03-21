@@ -57,7 +57,7 @@ setClass("DictPromise", contains="ContainerPromise")
 ## treat them as a scalar collection of vectors, in the same way that
 ## a JSON array of consistent objects can be twisted into a data.frame.
 setClass("BaseStructPromise",
-         contains=c("HailPromise", "SimpleHailPromiseList", "VIRTUAL"),
+         contains=c("SimpleHailPromiseList", "HailPromise", "VIRTUAL"),
          slots=c(fieldTypes="HailTypeList"))
 
 ## list-like with unique names
@@ -191,6 +191,12 @@ setMethod("extractROWS", "HailPromise",
               extractROWS(context(x), i)
           })
 
+setMethod("extractROWS", "StructPromise", function(x, i) {
+    if (is.character(i)) {
+        promiseCall(HailSelectFields, hailType(x)[i], i)
+    } else callNextMethod()
+})
+
 setReplaceMethod("[", "HailPromise", function(x, i, j, ..., value) {
     stopifnot(missing(j), missing(...))
     if (missing(i))
@@ -205,6 +211,33 @@ setReplaceMethod("[", "HailPromise", function(x, i, j, ..., value) {
         x
     } else stop("unsupported type for 'i'")
 })
+
+insertFields <- function(x, value) {
+    ### TODO: dropping identity exprs in 'value' is a potential optimization
+    ## value <- value[!mapply(identical, as.list(x)[names(value)],
+    ##                        lapply(value, normExpr))]
+    type <- hailType(x)
+    type[i] <- lapply(value, hailType)
+    promiseCall(HailInsertFields, type, x, value)
+}
+
+setMethod("replaceROWS", "StructPromise", function(x, i, value) {
+    normalizeSingleBracketSubscript(x, i, allow.append=is.character(i))
+    if (is.character(i)) {
+        names(value) <- i
+    }
+    insertFields(x, value)
+})
+
+setMethod("bindROWS", "StructPromise",
+          function(x, objects=list(), use.names=TRUE, ignore.mcols=FALSE,
+                   check=TRUE)
+          {
+              ans <- callNextMethod()
+              if (anyDuplicated(names(ans)))
+                  stop("duplicate names not allowed")
+              insertFields(x, tail(ans, length(ans) - length(x)))
+          })
 
 setMethod("hailType", "Int32Promise", function(x) TINT32)
 setMethod("hailType", "Int64Promise", function(x) TINT64)

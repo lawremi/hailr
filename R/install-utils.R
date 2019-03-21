@@ -21,8 +21,8 @@ hail_artifact <- function(version, hash, spark_version = "2.2.0") {
 
 available_hails <- function() {                                 
     rbind(hail_artifact(
-        "0.2.5",
-        "b7/55/8e2a86da134ee3485269a5f9e53b3c6202119351ec75e9d3382b1c1cb200"
+        "0.2.11",
+        "71/b3/67bf8947a03c49a6f6c990defd739252a6a298689d108ed44e89b95a68a0"
     ))
 }
 

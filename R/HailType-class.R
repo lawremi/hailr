@@ -92,12 +92,12 @@ setClass("is.hail.expr.types.virtual.TStruct",
          contains="is.hail.expr.types.virtual.TBaseStruct")
 setClass("TBaseStruct",
          contains=c("HailType", "HailTypeList"))
-setClass("TStruct",
-         contains="TBaseStruct",
-         validity=function(object) {
-             if (length(object) > 0L && is.null(names(object)))
-                 "TStruct objects must have names"
-         })
+.TStruct <- setClass("TStruct",
+                     contains="TBaseStruct",
+                     validity=function(object) {
+                         if (length(object) > 0L && is.null(names(object)))
+                             "TStruct objects must have names"
+                     })
 setClass("TTuple", contains="TBaseStruct")
 
 ## Better name might have been 'DecoratedType'; adds semantics
@@ -178,6 +178,7 @@ setMethod("vectorMode", "TBoolean", function(x) "logical")
 setMethod("vectorMode", "TFloat64", function(x) "numeric")
 setMethod("vectorMode", "TFloat32", function(x) "numeric")
 setMethod("vectorMode", "TInt32", function(x) "integer")
+setMethod("vectorMode", "TInt64", function(x) "numeric") # but not really
 setMethod("vectorMode", "TString", function(x) "character")
 
 TArray <- function(elementType) {
@@ -186,6 +187,13 @@ TArray <- function(elementType) {
 
 TableType <- function(rowType, globalType, keys) {
     .TableType(rowType=rowType, globalType=globalType, keys=keys)
+}
+
+TStruct <- function(...) {
+    args <- list(...)
+    if (length(args) == 1 && is.list(args[[1]])) 
+        args <- args[[1]]
+    .TStruct(as(args, "List"))
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

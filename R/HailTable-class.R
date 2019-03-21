@@ -18,6 +18,10 @@ setClass("org.apache.spark.sql.Dataset", contains="JavaObject")
 .HailTable <- setRefClass("HailTable",
                           fields=c(expr="HailTableExpression",
                                    context="HailContext"))
+### The HailContext is a singleton in Scala, so we only store it to
+### access the JVM.  We could just enforce a single JVM and store it
+### globally, but currently we are more flexible: a single R session
+### can communicate with multiple JVMs (Hail instances).
 
 .HailTableRowContext <- setClass("HailTableRowContext",
                                  slots=c(hailTable="HailTable"),
@@ -48,7 +52,7 @@ setMethod("transmit", c("org.apache.spark.sql.Dataset", "is.hail.HailContext"),
           })
 
 setMethod("unmarshal", c("is.hail.expr.ir.TableIR", "ANY"),
-          function(x, skeleton) unmarshal(HailTable(x), skeleton))
+          function(x, skeleton) unmarshal(HailTable(x, context(x)), skeleton))
 
 HailTableRowContext <- function(hailTable) {
     .HailTableRowContext(hailTable=hailTable)
@@ -83,29 +87,44 @@ setMethod("hailType", "HailTable", function(x) hailType(x$expr))
                 HailGlobalContext(.self))
     },
     select = function(...) {
-        .self$selectStruct(struct_expr(...))
-    },
-    selectStruct = function(expr) {
-        if (getOption("verbose")) {
-            message("select: {", as.character(expr), "}")
-        }
-        HailTable(HailMapRows(.self$expr, expr), .self$context)
+        fields <- c(...)
+        .self$mapRows(expr(.self$row()[fields]))
     },
     selectGlobals = function(...) {
-        expr <- struct_expr(...)
-        HailTable(HailMapGlobals(.self$expr, expr), .self$context)
+        fields <- c(...)
+        .self$mapGlobals(expr(.self$global()[fields]))
+    },
+    mapRows = function(expr) {
+        if (getOption("verbose")) {
+            message("map: {", as.character(expr), "}")
+        }
+        HailTable(HailTableMapRows(.self$expr, expr), .self$context)
+    },
+    mapGlobals = function(expr) {
+        HailTable(HailTableMapGlobals(.self$expr, expr), .self$context)
     },
     annotate = function(...) {
-        s <- struct_expr(...)
-        r <- lapply(.self$row(), expr)
-        r[names(s)] <- as.list(s)
-        .self$selectStruct(HailMakeStruct(r))
+        s <- annotate_exprs(...)
+        r <- .self$row()
+        r[names(s)] <- s
+        .self$mapRows(r)
     },
-    annotate1 = function(name, value) {
-        .self$annotate(setNames(list(value), name))
+    project = function(...) {
+        s <- annotate_exprs(...)
+        r <- .self$row()
+        r[names(s)] <- s
+        .self$mapRows(r[names(s)])
+    },
+    annotateGlobals = function(...) {
+        s <- annotate_exprs(...)
+        r <- .self$globals()
+        r[names(s)] <- s
+        .self$mapGlobals(r)
     },
     addIndex = function(name) {
-        .self$annotate1(name, HailApplyScanOp(Accumulation("Count")))
+        r <- .self$row()
+        r[[name]] <- HailApplyScanOp(Accumulation("Count"))
+        .self$mapRows(r)
     },
     filter = function(expr) {
         HailTable(TableFilter(.self$expr, normExpr(expr)), .self$context)
@@ -123,7 +142,7 @@ setMethod("hailType", "HailTable", function(x) hailType(x$expr))
     },
     ## Could record upon construction to avoid repeated Java calls
     count = function() {
-        eval(HailTableCount(.self$expr), .self$context)
+        asLength(eval(HailTableCount(.self$expr), .self$context))
     },
     head = function(n) {
         HailTable(HailTableHead(.self$expr, n), .self$context)
@@ -145,18 +164,14 @@ normExpr <- function(x) {
     else x
 }
 
-struct_expr <- function(...) {
+annotate_exprs <- function(...) {
     args <- list(...)
     if (length(args) == 1L && is.list(args[[1L]]))
         args <- args[[1L]]
     args <- lapply(args, normExpr)
-    if (is.null(names(args)))
-        names(args)[] <- ""
-    unnamed <- names(args) == ""
-    names(args)[unnamed] <- vapply(args[unnamed],
-                                   function(x) name(symbol(x)),
-                                   character(1L))
-    HailMakeStruct(args)
+    if (is.null(names(args)) || any(names(args) == ""))
+        stop("annotate() arguments must be named")
+    args
 }
 
 setMethod("nrow", "HailTable", function(x) x$count())
@@ -176,10 +191,6 @@ src <- function(x) x@src
 ## setMethod("extractROWS", c("HailTable", "HailWhichPromise"), function(x, i) {
 ##     extractROWS(x, logicalPromise(i))
 ## })
-
-setMethod("context", "HailTable", function(x) {
-    HailContext(x$impl$hc())
-})
 
 setMethod("parent", "HailTableRowContext", function(x) context(hailTable(x)))
 
@@ -252,3 +263,11 @@ readHailTableFromText <- function(file,
                                separator, missing, noHeader, impute, quote,
                                skipBlankLines)
 }
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### show()
+###
+
+setMethod("show", "HailTable", function(object) {
+    cat(object$expr, "\n")
+})

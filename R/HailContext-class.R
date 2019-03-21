@@ -38,6 +38,8 @@ initHailContext <- function(context = sparkContext(HailConnection()),
 }
 
 HailContext <- function(impl) {
+    if (is(impl, "JVM"))
+        impl <- impl$is$hail$HailContext$get()
     .HailContext(impl=impl)
 }
 
@@ -75,8 +77,9 @@ setMethod("eval", c("HailExpression", "HailExpressionContext"),
 
 setMethod("eval", c("HailExpression", "HailContext"),
           function(expr, envir, enclos) {
-              ans <- fromJSON(jvm(envir)$expr$ir$Interpret$interpretJSON(expr))
-              cast(ans, hailType(expr))
+              json <- jvm(envir)$is$hail$expr$ir$CompileAndEvaluate$
+                               evaluateToJSON(expr)
+              cast(fromJSON(json), hailType(expr))
           })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
