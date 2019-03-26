@@ -77,6 +77,38 @@ as.data.frame.Promise <- function(x, row.names = NULL, optional = FALSE, ...) {
 as.list.Promise <- function(x, ...) as.list(fulfill(x))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### NSBS wrapper
+###
+
+setClass("PromiseNSBS", contains="NSBS", slots=c(subscript="Promise"))
+
+PromiseNSBS <- function(subscript, upper_bound, upper_bound_is_strict, has_NAs)
+    new2("PromiseNSBS", subscript=subscript,
+         upper_bound=upper_bound,
+         upper_bound_is_strict=upper_bound_is_strict,
+         has_NAs=has_NAs,
+         check=FALSE)
+
+setMethod("NSBS", "Promise",
+          function(i, x, exact=TRUE, strict.upper.bound=TRUE, allow.NAs=FALSE) {
+              ### FIXME: check 'i' is within upper bound
+              ### FIXME: check for NAs if !allow.NAs
+              PromiseNSBS(i, NROW(x), strict.upper.bound, FALSE)
+          })
+
+setMethod("length", "PromiseNSBS", function(x) length(x@subscript))
+
+setMethod("as.integer", "PromiseNSBS", function(x) as.integer(x@subscript))
+
+setMethod("replaceROWS", c(i="PromiseNSBS"), function(x, i, value ) {
+    replaceROWS(x, i@subscript, value)
+})
+
+setMethod("extractROWS", c(i="PromiseNSBS"), function(x, i) {
+    extractROWS(x, i@subscript)
+})
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### show()
 ###
 

@@ -215,10 +215,13 @@ HailIf <- function(cond, cnsq, altr) {
 }
 
 HailInsertFields <- function(old, fields) {
+    ### TODO: optimize by coalescing previous InsertFields
     .HailInsertFields(old=old, fields=HailVarArgs(fields))
 }
 
 HailSelectFields <- function(old, fields) {
+    ### TODO: optimize by coalescing previous Select()
+    ### TODO: optimize by coalescing InsertFields (drop the unneeded ones)
     .HailSelectFields(old=old, fields=fields)
 }
 

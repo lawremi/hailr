@@ -156,19 +156,10 @@ check_compatible_keys <- function(left, right) {
     identical(keyType(hailType(left)), keyType(hailType(right)))
 }
 
-normExpr <- function(x) {
-    if (is.character(x))
-        HailRef(x)
-    else if (is(x, "HailPromise"))
-        expr(x)
-    else x
-}
-
 annotate_exprs <- function(...) {
     args <- list(...)
     if (length(args) == 1L && is.list(args[[1L]]))
         args <- args[[1L]]
-    args <- lapply(args, normExpr)
     if (is.null(names(args)) || any(names(args) == ""))
         stop("annotate() arguments must be named")
     args

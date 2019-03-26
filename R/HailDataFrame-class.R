@@ -41,14 +41,14 @@ setMethod("unmarshal", c("HailTable", "DataFrame"),
                       unmarshal(df[[cn]], skel)
                   else unmarshal(df[cn], skel)
               }, cnl, skeleton, SIMPLIFY=FALSE)
-              select(df, cols)
+              project(df, cols)
           })
 
 setMethod("unmarshal", c("HailTable", "data.frame"),
           function(x, skeleton) {
               df <- callNextMethod()
               cols <- mapply(unmarshal, df, skeleton, SIMPLIFY=FALSE)
-              select(df, cols)
+              project(df, cols)
           })
 
 setAs("ANY", "HailDataFrame", function(from) {
@@ -126,7 +126,7 @@ setMethod("extractCOLS", "HailDataFrame", function(x, i) {
     else ans
 })
 
-push_replacement <- function(x, i, value) {
+push_replacement <- function(x, value) {
     if (is.null(value)) {
         select(x, names(x))
     } else {
@@ -135,17 +135,19 @@ push_replacement <- function(x, i, value) {
 }
 
 setMethod("replaceCOLS", "HailDataFrame", function(x, i, value) {
-    push_replacement(callNextMethod(), i, value)   
+    push_replacement(callNextMethod(), value)   
 })
 
 setMethod("setListElement", "HailDataFrame", function(x, i, value) {
-    push_replacement(callNextMethod(), i, value)
+    push_replacement(callNextMethod(), value)
 })
 
 select <- function(x, names) {
-    if (identical(names(x), names))
-        return(x)
     HailDataFrame(hailTable(x)$select(names))
+}
+
+project <- function(x, cols) {
+    HailDataFrame(hailTable(x)$project(cols))
 }
 
 with_temps <- function(x, FUN, use.names = FALSE, temps = list(), ...) {

@@ -85,11 +85,19 @@ setClass("LocusPromise", contains="HailAtomicPromise")
 
 setClass("HailOrderPromise", contains=c("HailPromise", "OrderPromise"))
 
+setClassUnion("Logical", c("logical", "BooleanPromise"))
+setClassUnion("Numeric", c("numeric", "NumericPromise"))
+setClassUnion("Character", c("character", "StringPromise"))
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Construction.
 ###
 
-### FIXME: 'type' should come last since we can often infer the type from expr
+### FIXME: Once we can infer the type from 'expr', we could have an
+### ordinary function Promise() that delegates to a generic
+### newPromise(), methods of which will just be constructors that
+### complete the representation.
+
 setGeneric("Promise", function(type, expr, context) {
     expr <- as(expr, expressionClass(context), strict=FALSE)
     new2(promiseClass(type), expr=expr, context=context, check=FALSE)
@@ -152,28 +160,32 @@ setMethod("dim", "HailPromise", function(x) {
     contextualDim(x, context(x))
 })
 
+setMethod("extractCOLS", "ArrayPromise", function(x, i) {
+    ### TODO: normalize 'j' to integer
+    if (length(i) == 1L) {
+        method <- paste0("[", i, "]")
+    } else if(isSlice(i)) {
+        method <- paste0("[", head(i, 1L), ":", tail(i, 1L), "]")
+    } else {
+        stop("'j' must be a scalar or (k:l)")
+    }
+    promiseMethodCall(method, elementType(hailType(x)), x)
+})
+
 setMethod("[", "ArrayPromise", function(x, i, j, ..., drop = TRUE) {
     if (length(list(...)) > 0L || !missing(drop)) {
         stop("'drop' and arguments in '...' not supported")
     }
     x <- callNextMethod(x, i)
     if (!missing(j)) {
-        ### TODO: normalize 'j' to integer
-        if (length(j) == 1L) {
-            method <- paste0("[", j, "]")
-        } else if(isSlice(j)) {
-            method <- paste0("[", head(j, 1L), ":", tail(j, 1L), "]")
-        } else {
-            stop("'j' must be a scalar or (k:l)")
-        }
-        x <- promiseMethodCall(method, elementType(hailType(x)), x)
+        extractCOLS(x, j)
     }
     x
 })
 
 setMethod("extractROWS", c("ArrayPromise", "ArrayPromise"),
           function(x, i) {
-
+              ### TODO
           })
 
 setMethod("extractROWS", "HailPromise",
@@ -191,41 +203,47 @@ setMethod("extractROWS", "HailPromise",
               extractROWS(context(x), i)
           })
 
+setMethod("replaceROWS", "HailPromise", mergeROWS)
+
+setMethod("mergeROWS", "HailPromise", function(x, i, value) {
+    mergeROWS(fulfill(x), fulfill(i), fulfill(value))
+})
+
+setMethod("bindROWS", "HailPromise",
+          function(x, objects=list(), use.names=TRUE, ignore.mcols=FALSE,
+                   check=TRUE)
+          {
+              bindROWS(fulfill(x), lapply(object, fulfill), use.names,
+                       ignore.mcols, check)
+          })
+
+selectFields <- function(x, fields) {
+    if (!identical(names(x), fields))
+        promiseCall(HailSelectFields, hailType(x)[fields], x, fields)
+    else x
+}
+
 setMethod("extractROWS", "StructPromise", function(x, i) {
-    if (is.character(i)) {
-        promiseCall(HailSelectFields, hailType(x)[i], i)
-    } else callNextMethod()
+    nsbs <- normalizeSingleBracketSubscript(x, i)
+    if (missing(i) || !is.character(i)) {
+        i <- names(x)[nsbs]
+    }
+    selectFields(ans, i)
 })
 
-setReplaceMethod("[", "HailPromise", function(x, i, j, ..., value) {
-    stopifnot(missing(j), missing(...))
-    if (missing(i))
-        value
-    else if (is.logical(i) || is(i, "BooleanPromise"))
-        ifelse(i, value, x)
-    else if (is.numeric(i) || is(i, "NumericPromise")) {
-        ### Probably deferrable using a join followed by ifelse, but for
-        ### now just fulfill() the promises.
-        x <- fulfill(x)
-        x[fulfill(i)] <- fulfill(value)
-        x
-    } else stop("unsupported type for 'i'")
-})
-
-insertFields <- function(x, value) {
-    ### TODO: dropping identity exprs in 'value' is a potential optimization
-    ## value <- value[!mapply(identical, as.list(x)[names(value)],
-    ##                        lapply(value, normExpr))]
+insertFields <- function(x, fields) {
+    fields <- fields[!mapply(identical, x[names(fields)], fields)]
     type <- hailType(x)
-    type[i] <- lapply(value, hailType)
+    type[i] <- lapply(fields, hailType)
     promiseCall(HailInsertFields, type, x, value)
 }
 
-setMethod("replaceROWS", "StructPromise", function(x, i, value) {
-    normalizeSingleBracketSubscript(x, i, allow.append=is.character(i))
-    if (is.character(i)) {
-        names(value) <- i
+setMethod("mergeROWS", "StructPromise", function(x, i, value) {
+    nsbs <- normalizeSingleBracketSubscript(x, i, allow.append=is.character(i))
+    if (missing(i) || !is.character(i)) {
+        i <- names(x)[nsbs]
     }
+    names(value) <- i
     insertFields(x, value)
 })
 
@@ -237,6 +255,11 @@ setMethod("bindROWS", "StructPromise",
               if (anyDuplicated(names(ans)))
                   stop("duplicate names not allowed")
               insertFields(x, tail(ans, length(ans) - length(x)))
+          })
+
+setMethod("normalizeSingleBracketReplacementValue", "HailPromiseList",
+          function(value, x) {
+              HailPromiseList(value)
           })
 
 setMethod("hailType", "Int32Promise", function(x) TINT32)
