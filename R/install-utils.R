@@ -1,8 +1,13 @@
 installed_sparks <- function() {
-    sparklyr::spark_installed_versions()
+    if (requireNamespace("sparklyr", quietly=TRUE))
+        sparklyr::spark_installed_versions()
+    else list()
 }
 
 install_spark <- function(version) {
+    if (!requireNamespace("sparklyr", quietly=TRUE))
+        stop("The sparklyr package must be installed to install Spark. ",
+             "Please install sparklyr or install Spark manually.")
     message("Installing Spark version '", version, "'")
     sparklyr::spark_install(version)
 }
@@ -116,7 +121,7 @@ prompt_to_install_hail <- function() {
 install_hail <- function(version) {
     if (!requireNamespace("sparklyr", quietly=TRUE))
         stop(strwrap(paste(
-            "The sparklyr package must be installed to install hail",
+            "The sparklyr package must be installed to install hail. ",
             "Please install sparklyr or install Hail manually.")))
     hail <- select_hail(available_hails(), version)
     install_hail_artifact(hail)
@@ -125,7 +130,7 @@ install_hail <- function(version) {
 hail_dir <- function() {
     if (!requireNamespace("rappdirs", quietly=TRUE))
         stop(strwrap(paste("The rappdirs package must be installed to use ",
-                           "the automatically installed Hail.\nPlease ",
+                           "the automatically installed Hail. Please ",
                            "install rappdirs or use a system Hail.")))
     file.path(rappdirs::user_data_dir("R"), "hailr", "hail")
 }
