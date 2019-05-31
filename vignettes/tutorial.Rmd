@@ -53,5 +53,5 @@ the VDS file as a HailExperiment:
 
 ```{r}
 vcf <- system.file("extdata", "1kg.vcf.bgz", package="hailr")
-he <- readHailExperimentFromVCF(vcf, genome="GRCh37")
+#he <- readHailExperimentFromVCF(vcf, genome="GRCh37")
 ```
