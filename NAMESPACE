@@ -4,6 +4,7 @@ import(S4Vectors)
 import(IRanges)
 import(GenomicRanges)
 import(SummarizedExperiment)
+import(GenomeInfoDb)
 
 importFrom(utils, untar)
 importFrom(tools, file_path_sans_ext)

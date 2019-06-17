@@ -23,13 +23,12 @@ setClass("org.apache.spark.sql.Dataset", contains="JavaObject")
 ### globally, but currently we are more flexible: a single R session
 ### can communicate with multiple JVMs (Hail instances).
 
+### A utility class that lets us dispatch on whether a promise is
+### derived from the 'row' struct, which holds the columns in the
+### context of a HailTableMapRows() call.
 .HailTableRowContext <- setClass("HailTableRowContext",
                                  slots=c(hailTable="HailTable"),
                                  contains="HailExpressionContext")
-
-.HailGlobalContext <- setClass("HailGlobalContext",
-                               slots=c(src="ANY"),
-                               contains="HailExpressionContext")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Construction
@@ -58,22 +57,19 @@ HailTableRowContext <- function(hailTable) {
     .HailTableRowContext(hailTable=hailTable)
 }
 
-HailGlobalContext <- function(src) {
-    .HailGlobalContext(src=src)
-}
-
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessors
 ###
 
 setMethod("hailType", "HailTable", function(x) hailType(x$expr))
 
+setMethod("hailType", "HailTableRowContext", function(x) hailType(x@hailTable))
+
 ## We lazily (as features are needed) reimplement the Python API
 
 .HailTable$methods(
     row = function() {
-        Promise(rowType(hailType(.self)), HailRef(HailSymbol("row")),
-                HailTableRowContext(.self))
+        Promise(HailRef(HailSymbol("row")), HailTableRowContext(.self))
     },
     rowValue = function() {
         row <- .self$row()
@@ -104,19 +100,19 @@ setMethod("hailType", "HailTable", function(x) hailType(x$expr))
         HailTable(HailTableMapGlobals(.self$expr, expr), .self$context)
     },
     annotate = function(...) {
-        s <- annotate_exprs(...)
+        s <- DataFrame(...)
         r <- .self$row()
         r[names(s)] <- s
         .self$mapRows(r)
     },
     project = function(...) {
-        s <- annotate_exprs(...)
+        s <- DataFrame(...)
         r <- .self$row()
         r[names(s)] <- s
         .self$mapRows(r[names(s)])
     },
     annotateGlobals = function(...) {
-        s <- annotate_exprs(...)
+        s <- DataFrame(...)
         r <- .self$globals()
         r[names(s)] <- s
         .self$mapGlobals(r)
@@ -156,14 +152,14 @@ check_compatible_keys <- function(left, right) {
     identical(keyType(hailType(left)), keyType(hailType(right)))
 }
 
-annotate_exprs <- function(...) {
-    args <- list(...)
-    if (length(args) == 1L && is.list(args[[1L]]))
-        args <- args[[1L]]
-    if (is.null(names(args)) || any(names(args) == ""))
-        stop("annotate() arguments must be named")
-    args
-}
+## StructPromise <- function(...) {
+##     args <- list(...)
+##     if (length(args) == 1L && is.list(args[[1L]]))
+##         args <- args[[1L]]
+##     if (is.null(names(args)) || any(names(args) == ""))
+##         stop("StructPromise members arguments must be named")
+##     promiseCall(HailMakeStruct, TStruct(lapply(args, hailType)), args)
+## }
 
 setMethod("nrow", "HailTable", function(x) x$count())
 

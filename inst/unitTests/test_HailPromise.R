@@ -1,4 +1,6 @@
-library(hailr) # should not be here but it's convenient for now
+## should not be here but convenient for now
+library(hailr)
+library(RUnit)
 test_HailPromise_operators <- function() {
     rows <- data.frame(a = c(4L, 0L, 4L),
                        b = c(1L, 5L, 2L),

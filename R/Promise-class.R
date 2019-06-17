@@ -29,6 +29,23 @@ setGeneric("context", function(x) NULL)
 
 setMethod("context", "Promise", function(x) x@context)
 
+setMethod("context", "DataFrame", function(x) resolveContext(x))
+
+resolveContext <- function(objs) {
+    ctxs <- Filter(Negate(is.null), lapply(objs, context))
+    ans <- ctxs[[1L]]
+    for (ctx in ctxs[-1L]) {
+        if (!identical(ans, ctx)) {
+            if (derivesFrom(ctx, ans)) {
+                ans <- ctx
+            } else {
+                stop("cannot combine promises from different contexts")
+            }
+        }
+    }
+    ans
+}
+
 `context<-` <- function(x, value) {
     x@context <- value
     x

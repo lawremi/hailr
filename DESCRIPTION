@@ -8,7 +8,7 @@ Description: Enables computing on genotype data within Hail (and Spark)
              by writing R code based on Bioconductor APIs
 License: MIT
 Imports: SummarizedExperiment, S4Vectors (>= 0.21.15), IRanges, GenomicRanges,
-	 jsonlite, utils, tools
+	 GenomeInfoDb, jsonlite, utils, tools
 Depends:
     R (>= 3.2.0),
     BiocGenerics (>= 0.15.1),
@@ -25,6 +25,7 @@ Collate:
 	HailType-class.R
 	HailExpression-class.R
 	HailContext-class.R
+	HailGlobalContext-class.R
 	HailPromise-class.R
 	HailTableExpression-class.R
 	HailTable-class.R
@@ -34,6 +35,7 @@ Collate:
 	HailMetaDataFrame-class.R
 	HailExperiment-class.R
 	HailContextManager-class.R
+	functions.R
 	SparkDriverManager-class.R
 	SparkConfig-class.R
 	HailConfig-class.R

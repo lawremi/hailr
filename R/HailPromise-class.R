@@ -45,9 +45,10 @@ setClass("ContainerPromise",
          prototype=prototype(elementHailType=TBOOLEAN),
          contains=c("HailPromise", "HailPromiseList", "VIRTUAL"))
 ## in general ragged but could be a matrix
-setClass("ArrayPromise", contains="ContainerPromise")
+setClass("IterablePromise", contains="ContainerPromise")
+setClass("ArrayPromise", contains="IterablePromise")
 setClass("NumericArrayPromise", contains="ArrayPromise")
-setClass("SetPromise", contains="ContainerPromise")
+setClass("SetPromise", contains="IterablePromise")
 setClass("DictPromise", contains="ContainerPromise")
 
 .SimpleHailPromiseList <- setClass("SimpleHailPromiseList",
@@ -57,8 +58,7 @@ setClass("DictPromise", contains="ContainerPromise")
 ## treat them as a scalar collection of vectors, in the same way that
 ## a JSON array of consistent objects can be twisted into a data.frame.
 setClass("BaseStructPromise",
-         contains=c("SimpleHailPromiseList", "HailPromise", "VIRTUAL"),
-         slots=c(fieldTypes="HailTypeList"))
+         contains=c("SimpleHailPromiseList", "HailPromise", "VIRTUAL"))
 
 ## list-like with unique names
 setClass("StructPromise", contains="BaseStructPromise",
@@ -93,40 +93,32 @@ setClassUnion("Character", c("character", "StringPromise"))
 ### Construction.
 ###
 
-### FIXME: Once we can infer the type from 'expr', we could have an
-### ordinary function Promise() that delegates to a generic
-### newPromise(), methods of which will just be constructors that
-### complete the representation.
+Promise <- function(expr, context) {
+    type <- hailType(expr, as.environment(hailType(context)))
+    makePromise(type, expr, context)
+}
 
-setGeneric("Promise", function(type, expr, context) {
+setGeneric("makePromise", function(type, expr, context) {
     expr <- as(expr, expressionClass(context), strict=FALSE)
     new2(promiseClass(type), expr=expr, context=context, check=FALSE)
 }, signature="type")
 
-setMethod("Promise", "TBaseStruct", function(type, expr, context) {
+setMethod("makePromise", "TBaseStruct", function(type, expr, context) {
     promise <- callNextMethod()
     subpromises <- HailPromiseList(lapply(names(type), function(nm) {
-        Promise(type[[nm]], expr(promise)[[nm]], context)
+        makePromise(type[[nm]], expr(promise)[[nm]], context)
     }))
     names(subpromises) <- names(type)
     initialize(promise, subpromises)
 })
 
-setMethod("Promise", "TContainer", function(type, expr, context) {
+setMethod("makePromise", "TContainer", function(type, expr, context) {
     initialize(callNextMethod(), elementHailType=elementType(type),
                elementType=promiseClass(elementType(type)))
 })
 
-setMethod("Promise", "missing", function(type, expr, context) {
-    Promise(hailType(expr), expr, context)
-})
-
 HailPromiseList <- function(...) {
     .SimpleHailPromiseList(List(...))
-}
-
-dummyPromise <- function(context) {
-    Promise(context, FALSE, TBOOLEAN)
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -136,7 +128,7 @@ dummyPromise <- function(context) {
 setGeneric("size", function(x) length(x))
 
 setMethod("size", "HailPromise", function(x) {
-    promiseMethodCall("size", TINT32, x)
+    promiseMethodCall("size", x)
 })
 
 ### Our promises are typed according to the type of data they
@@ -152,24 +144,61 @@ setMethod("length", "BaseStructPromise", function(x) {
     length(as.list(x))
 })
 
-setMethod("lengths", "ContainerPromise", function(x, use.names = TRUE) {
-    ## TODO
+setMethod("lengths", "IterablePromise", function(x, use.names = TRUE) {
+    promiseCall(HailArrayLen, x)
 })
 
 setMethod("dim", "HailPromise", function(x) {
     contextualDim(x, context(x))
 })
 
+setMethod("dim", "ArrayPromise", function(x) {
+    ncol <- unique(lengths(x))
+    if (length(ncol) > 1L)
+        stop("array is not rectangular")
+    c(length(x), ncol)
+})
+
+setMethod("names", "HailPromise", function(x) contextualNames(x, context(x)))
+
+setGeneric("contextualNames",
+           function(x, context) standardGeneric("contextualNames"))
+
+setMethod("contextualNames", c("HailPromise", "HailExpressionContext"),
+          function(x, context) NULL)
+
 setMethod("extractCOLS", "ArrayPromise", function(x, i) {
-    ### TODO: normalize 'j' to integer
+    stopifnot(is.numeric(i), !anyNA(i), all(i > 0)) # TODO: support logical
     if (length(i) == 1L) {
-        method <- paste0("[", i, "]")
-    } else if(isSlice(i)) {
-        method <- paste0("[", head(i, 1L), ":", tail(i, 1L), "]")
+        promiseMethodCall("indexArray", x, i)
+    }
+    else if(isSlice(i)) {
+        promiseMethodCall("[*:*]", x, head(i, 1L), tail(i, 1L))
     } else {
         stop("'j' must be a scalar or (k:l)")
     }
-    promiseMethodCall(method, elementType(hailType(x)), x)
+})
+
+setGeneric("heads", signature="x")
+
+setMethod("heads", "ArrayPromise", function(x, n=6L) {
+    n <- unique(n)
+    stopifnot(length(n) > 1L)
+    if (n < 0L)
+        end <- ncol(x) - n
+    else end <- n
+    promiseMethodCall("[:*]", x, end - 1L)
+})
+
+setGeneric("tails", signature="x")
+
+setMethod("tails", "ArrayPromise", function(x, n=6L) {
+    n <- unique(n)
+    stopifnot(length(n) > 1L)
+    if (n < 0L)
+        start <- abs(n)
+    else start <- ncol(x) - n
+    promiseMethodCall("[*:]", x, start)
 })
 
 setMethod("[", "ArrayPromise", function(x, i, j, ..., drop = TRUE) {
@@ -203,8 +232,6 @@ setMethod("extractROWS", "HailPromise",
               extractROWS(context(x), i)
           })
 
-setMethod("replaceROWS", "HailPromise", mergeROWS)
-
 setMethod("mergeROWS", "HailPromise", function(x, i, value) {
     mergeROWS(fulfill(x), fulfill(i), fulfill(value))
 })
@@ -219,27 +246,25 @@ setMethod("bindROWS", "HailPromise",
 
 selectFields <- function(x, fields) {
     if (!identical(names(x), fields))
-        promiseCall(HailSelectFields, hailType(x)[fields], x, fields)
+        promiseCall(HailSelectFields, x, fields)
     else x
 }
 
 setMethod("extractROWS", "StructPromise", function(x, i) {
-    nsbs <- normalizeSingleBracketSubscript(x, i)
+    nsbs <- normalizeSingleBracketSubscript(i, x)
     if (missing(i) || !is.character(i)) {
         i <- names(x)[nsbs]
     }
-    selectFields(ans, i)
+    selectFields(x, i)
 })
 
 insertFields <- function(x, fields) {
     fields <- fields[!mapply(identical, x[names(fields)], fields)]
-    type <- hailType(x)
-    type[i] <- lapply(fields, hailType)
-    promiseCall(HailInsertFields, type, x, value)
+    promiseCall(HailInsertFields, x, fields)
 }
 
 setMethod("mergeROWS", "StructPromise", function(x, i, value) {
-    nsbs <- normalizeSingleBracketSubscript(x, i, allow.append=is.character(i))
+    nsbs <- normalizeSingleBracketSubscript(i, x, allow.append=is.character(i))
     if (missing(i) || !is.character(i)) {
         i <- names(x)[nsbs]
     }
@@ -257,11 +282,13 @@ setMethod("bindROWS", "StructPromise",
               insertFields(x, tail(ans, length(ans) - length(x)))
           })
 
-setMethod("normalizeSingleBracketReplacementValue", "HailPromiseList",
-          function(value, x) {
-              HailPromiseList(value)
-          })
-
+### Promise creation infers the type from the expression. In theory we
+### could dynamically infer the type here, but we explicitly return
+### the type corresponding to each promise type, because it is often
+### obvious from the class. It only gets complicated when we need
+### additional information beyond the class, such as the types of the
+### fields in a struct. Dynamic type inference would obviate the need
+### to store that information on the promise.
 setMethod("hailType", "Int32Promise", function(x) TINT32)
 setMethod("hailType", "Int64Promise", function(x) TINT64)
 setMethod("hailType", "Float32Promise", function(x) TFLOAT32)
@@ -280,7 +307,7 @@ setGeneric("cast", function(x, type) as(x, promiseClass(type)))
 
 setMethod("cast", c("HailPromise", "HailPrimitiveType"), function(x, type) {
     if (!identical(vectorMode(hailType(x)), vectorMode(type))) {
-        promiseMethodCall(x, paste0("to", type), type)
+        promiseMethodCall(x, castMethod(type))
     } else {
         x
     }
@@ -305,12 +332,16 @@ setMethod("cast", c("data.frame", "TStruct"), function(x, type) {
 
 setMethod("as.list", "ContainerPromise", as.list.Promise)
 
+setAs("DataFrame", "StructPromise", function(from) {
+    promiseCall(HailMakeStruct, args=as.list(from))
+})
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Iteration
 ###
 
 .ArrayApplyContext <- setClass("ArrayApplyContext",
-                               slots=c(arrayPromise="ArrayPromise",
+                               slots=c(arrayPromise="ContainerPromise",
                                        argName="HailSymbol"),
                                contains="HailExpressionContext")
 
@@ -339,17 +370,19 @@ setMethod("extractROWS", c("ArrayApplyContext", "BooleanPromise"),
               ### replace the underlying array promise, preserving the
               ### expr and keeping it in an ArrayApplyContext. This is
               ### probably asking for trouble.
-              arrayPromise(x) <- Promise(hailType(array), expr,
-                                         context(arrayPromise(x)))
+              arrayPromise(x) <- Promise(expr, context(arrayPromise(x)))
               x
           })
 
 setMethod("contextualLength",
           c("HailPromise", "ArrayApplyContext"),
           function(x, context) {
-              arrayPromise <- arrayMap(x)
-              Promise(TINT32, HailArrayLen(expr(arrayPromise)),
-                      context(arrayPromise))
+              lengths(arrayMap(x))
+          })
+
+setMethod("contextualNames", c("DictPromise", "ArrayApplyContext"),
+          function(x, context) {
+              cast(promiseMethodCall(x, "keys"), TArray(TSTRING))
           })
 
 setGeneric("deriveTable",
@@ -367,10 +400,20 @@ setClass("AtomicApplyContext", contains="HailContext")
 setMethod("contextualLength", c("HailPromise", "AtomicApplyContext"),
           function(x, context) 1L)
 
+.ArrayApplyType <- setClass("ArrayApplyType",
+                            slots=c(elementType="HailType", argName="HailSymbol"),
+                            contains="HailType")
+
+setMethod("hailType", "ArrayApplyContext",
+          function(x) .ArrayApplyType(elementType=elementType(hailType(arrayPromise(x))),
+                                      argName=argName(x)))
+
+as.environment.ArrayApplyType <- function(x) {
+    setNames(list(elementType(x)), argName(x))
+}
+
 elementPromise <- function(context) {
-    Promise(elementType(hailType(arrayPromise(context))),
-            HailRef(argName(context)),
-            context)
+    Promise(HailRef(argName(context)), context)
 }
 
 arrayMapExpr <- function(context, expr) {
@@ -385,8 +428,7 @@ arrayMapExpr <- function(context, expr) {
 
 arrayMap <- function(body) {
     expr <- arrayMapExpr(context(body), expr(body))
-    Promise(TArray(hailType(body)), expr,
-            context(arrayPromise(context(body))))
+    Promise(expr, context(arrayPromise(context(body))))
 }
 
 ## Another case we may want to handle: df$array[[1]]. Calling `[[` on
@@ -419,13 +461,13 @@ setMethod("parent", "AccumulationContext", function(x) x@parent)
 
 setMethod("expressionClass", "ScanContext", function(x) "HailApplyScanOp")
 
-promiseAccumulation <- function(accumulation, context, type) {
-    Promise(type, as(accumulation, expressionClass(context)), parent(context))
+promiseAccumulation <- function(accumulation, context) {
+    Promise(as(accumulation, expressionClass(context)), parent(context))
 }
 
 setMethod("contextualLength", c("HailPromise", "AccumulationContext"),
           function(x, context) {
-              promiseAccumulation(Accumulation("Count"), context, TINT64)
+              promiseAccumulation(Accumulation("Count"), context)
           })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -476,7 +518,7 @@ setMethods("Logic",
 
 setMethod("ifelse2", "BooleanPromise", function(test, yes, no) {
     returnType <- unifyTypes(test, yes, no)
-    promiseCall(HailIf, returnType,
+    promiseCall(HailIf,
                 test,
                 cast(yes, returnType),
                 cast(no, returnType))
@@ -514,8 +556,7 @@ setMethod("strsplit", "StringPromise",
 
 ## Compare to solrCall()
 
-promiseCall <- function(fun, type, ..., CALL_CONSTRUCTOR) {
-    args <- list(...)
+promiseCall <- function(fun, ..., args = list(...), CALL_CONSTRUCTOR) {
     ctx <- resolveContext(args)
     promises <- vapply(args, is, "Promise", FUN.VALUE=logical(1L))
     args[promises] <- lapply(args[promises], expr)
@@ -525,25 +566,29 @@ promiseCall <- function(fun, type, ..., CALL_CONSTRUCTOR) {
     } else {
         expr <- CALL_CONSTRUCTOR(fun, args)
     }
-    Promise(type, expr, ctx)
+    Promise(expr, ctx)
 }
 
-promiseStaticCall <- function(fun, type, ...) {
-    promiseCall(fun, type, CALL_CONSTRUCTOR=HailApply, ...)
+promiseSeededCall <- function(fun, ...) {
+    promiseCall(fun, CALL_CONSTRUCTOR=HailApplySeeded, ...)
 }
 
-promiseMethodCall <- function(target, fun, type, ...) {
-    promiseCall(fun, type, CALL_CONSTRUCTOR=HailApply, target, ...)
+promiseStaticCall <- function(fun, ...) {
+    promiseCall(fun, CALL_CONSTRUCTOR=HailApply, ...)
 }
 
-promiseBinaryOpCall <- function(op, left, right, returnType, OP_CONSTRUCTOR) {
-    promiseCall(op, returnType, CALL_CONSTRUCTOR=function(op, args) {
+promiseMethodCall <- function(target, fun, ...) {
+    promiseCall(fun, CALL_CONSTRUCTOR=HailApply, target, ...)
+}
+
+promiseBinaryOpCall <- function(op, left, right, OP_CONSTRUCTOR) {
+    promiseCall(op, CALL_CONSTRUCTOR=function(op, args) {
         OP_CONSTRUCTOR(HailSymbol(op), args[[1L]], args[[2L]])
     }, left, right)
 }
 
 promiseComparisonOpCall <- function(op, left, right) {
-    promiseBinaryOpCall(op, left, right, TBOOLEAN, HailApplyComparisonOp)
+    promiseBinaryOpCall(op, left, right, HailApplyComparisonOp)
 }
 
 cast_recycle <- function(x, type) {
@@ -558,7 +603,7 @@ promiseBinaryPrimOpCall <- function(op, left, right) {
     promiseBinaryOpCall(op,
                         cast_recycle(left, returnType),
                         cast_recycle(right, returnType),
-                        returnType, HailApplyBinaryPrimOp)
+                        HailApplyBinaryPrimOp)
 }
 
 unifyTypes <- function(...) {
@@ -566,23 +611,7 @@ unifyTypes <- function(...) {
 }
 
 promiseUnaryOpCall <- function(op, x) {
-    promiseCall(op, hailType(x), CALL_CONSTRUCTOR=function(op, args) {
+    promiseCall(op, CALL_CONSTRUCTOR=function(op, args) {
         HailApplyUnaryPrimOp(HailSymbol(op), args[[1L]])
     }, x)
-}
-
-resolveContext <- function(objs) {
-    isProm <- vapply(objs, is, "Promise", FUN.VALUE=logical(1L))
-    ctxs <- Filter(Negate(is.null), lapply(objs[isProm], context))
-    ans <- ctxs[[1L]]
-    for (ctx in ctxs[-1L]) {
-        if (!identical(ans, ctx)) {
-            if (derivesFrom(ctx, ans)) {
-                ans <- ctx
-            } else {
-                stop("cannot combine promises from different contexts")
-            }
-        }
-    }
-    ans
 }

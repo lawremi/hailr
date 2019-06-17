@@ -135,20 +135,35 @@ setMethod("context", "is.hail.expr.ir.TableIR", function(x) {
 ### Type inference
 ###
 
-setMethod("hailType", "is.hail.expr.ir.TableIR",
-          function(x) as(x$typ(), "HailType"))
+setMethod("hailType", "is.hail.expr.ir.TableIR", function(x) as(x$typ(), "HailType"))
 
-setMethod("hailType", "UnaryHailTableExpression", function(x) {
+setMethod("inferHailType", "UnaryHailTableExpression", function(x, env) {
     hailType(child(x))
 })
 
-setMethod("hailType", "HailTableKeyBy", function(x) {
+as.environment.TableType <- function(x) {
+    list(global=globalType(x), row=rowType(x))
+}
+
+setMethod("inferHailType", "HailTableMapRows", function(x, env) {
+    old_type <- callNextMethod()
+    initialize(old_type,
+               rowType = inferHailType(expr(x), as.environment(old_type)))
+})
+
+setMethod("inferHailType", "HailTableMapGlobals", function(x, env) {
+    old_type <- callNextMethod()
+    initialize(old_type,
+               globalType = inferHailType(expr(x), as.environment(old_type)))
+})
+
+setMethod("inferHailType", "HailTableKeyBy", function(x, env) {
     type <- callNextMethod()
     keys(type) <- x@keys
     type
 })
 
-setMethod("hailType", "HailTableJoin", function(x) {
+setMethod("inferHailType", "HailTableJoin", function(x, env) {
     lt <- hailType(x@left)
     rt <- hailType(x@right)
     TableType(rowType=c(keyType(lt), valueType(lt), valueType(rt)),
@@ -156,9 +171,9 @@ setMethod("hailType", "HailTableJoin", function(x) {
               keys=unique(c(keys(lt), keys(rt))))
 })
 
-setMethod("hailType", "HailTableCount", function(x) TINT64)
+setMethod("inferHailType", "HailTableCount", function(x, env) TINT64)
 
-setMethod("hailType", "HailTableCollect", function(x) {
+setMethod("inferHailType", "HailTableCollect", function(x, env) {
     ttable <- hailType(child(x))
     TStruct(rows=TArray(rowType(ttable)), globals=globalType(ttable))
 })

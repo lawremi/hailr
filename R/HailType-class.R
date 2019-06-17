@@ -10,6 +10,9 @@
 ### like the Python interface, but we are not optimizing yet.
 ###
 
+### FIXME: Do we want a proper TNumericArray, and a corresponding
+### NumericArrayPromise, for convenience? (sort of like Python)
+
 setClass("is.hail.expr.types.virtual.Type", contains="JavaObject")
 setClass("HailType",
          slots=c(optional="logical"),
@@ -73,16 +76,20 @@ setClass("TBinary", contains="HailType")
 
 setClass("is.hail.expr.types.virtual.TContainer",
          contains="is.hail.expr.types.virtual.Type")
+setClass("is.hail.expr.types.virtual.TIterable",
+         contains="is.hail.expr.types.virtual.TContainer")
 setClass("is.hail.expr.types.virtual.TArray",
-         contains="is.hail.expr.types.virtual.TContainer")
+         contains="is.hail.expr.types.virtual.TIterable")
 setClass("is.hail.expr.types.virtual.TSet",
-         contains="is.hail.expr.types.virtual.TContainer")
+         contains="is.hail.expr.types.virtual.TIterable")
 setClass("is.hail.expr.types.virtual.TDict",
          contains="is.hail.expr.types.virtual.TContainer")
-setClass("TContainer", slots=c(elementType="HailType"), contains="HailType")
-.TArray <- setClass("TArray", contains="TContainer")
-setClass("TSet", contains="TContainer")
-setClass("TDict", contains="TContainer")
+setClass("TContainer", contains="HailType")
+setClass("TIterable", slots=c(elementType="HailType"), contains="TContainer")
+.TArray <- setClass("TArray", contains="TIterable")
+setClass("TSet", contains="TIterable")
+setClass("TDict", slots=c(valueType="HailType", keyType="HailType"),
+         contains="TContainer")
 
 setClass("is.hail.expr.types.virtual.TBaseStruct",
          contains="is.hail.expr.types.virtual.Type")
@@ -116,12 +123,14 @@ setClass("is.hail.expr.types.virtual.TCall",
          contains="is.hail.expr.types.virtual.ComplexType")
 setClass("is.hail.expr.types.virtual.TCallOptional",
          contains="is.hail.expr.types.virtual.TCall")
-setClass("TCall", contains="ComplexType")
+TCALL <- setClass("TCall", contains="ComplexType",
+                  prototype=list(representationType=TINT32))()
 
 ## Defined by a genome, chromosome, and position (like a SNP)
 setClass("is.hail.expr.types.virtual.TLocus",
          contains="is.hail.expr.types.virtual.ComplexType")
-setClass("TLocus", contains="ComplexType")
+setClass("TLocus", slots=c(rg="character"), prototype=prototype(rg="default"),
+         contains="ComplexType")
 
 setClass("is.hail.expr.types.TableType",
          contains="is.hail.expr.types.virtual.Type")
@@ -161,7 +170,7 @@ setClass("TVoid", contains="HailType")
 ### Constructors (could be memoized)
 ###
 
-setGeneric("hailType", function(x) standardGeneric("hailType"))
+setGeneric("hailType", function(x, ...) standardGeneric("hailType"))
 
 setMethod("hailType", "logical", function(x) TBOOLEAN)
 setMethod("hailType", "numeric", function(x) TFLOAT64)
@@ -170,6 +179,11 @@ setMethod("hailType", "character", function(x) TSTRING)
 setMethod("hailType", "array", function(x) TTuple(hailType(x[0L])))
 setMethod("hailType", "list",
           function(x) TArray(as(elementType(x), "HailType")))
+setMethod("hailType", "DataFrame", function(x) {
+    TableType(TStruct(lapply(x, hailType)),
+              TStruct(lapply(metadata(x), hailType)),
+              keys=character())
+})
 
 ## Compare to rsolr 'solrMode()'
 setGeneric("vectorMode", function(x) standardGeneric("vectorMode"))
@@ -196,6 +210,10 @@ TStruct <- function(...) {
     .TStruct(as(args, "List"))
 }
 
+TInterval <- function(positionType) {
+    .TInterval(representationType=positionType)
+}
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Accessors
 ###
@@ -214,11 +232,16 @@ keys <- function(x) x@keys
     x@keys <- value
     x
 }
-keyType <- function(x) unname(as.list(rowType(x))[keys(x)])
-valueType <- function(x) {
+setGeneric("keyType", function(x) standardGeneric("keyType"))
+setMethod("keyType", "TDict", function(x) x@keyType)
+setMethod("keyType", "TableType", function(x) unname(as.list(rowType(x))[keys(x)]))
+
+setGeneric("valueType", function(x) standardGeneric("valueType"))
+setMethod("valueType", "TDict", function(x) x@valueType)
+setMethod("valueType", "TableType", function(x) {
     rt <- rowType(x)
     rt[setdiff(names(rt), keys(x))]
-}
+})
 
 colTableType <- function(x) x@colTableType
 rowTableType <- function(x) x@rowTableType
@@ -229,6 +252,13 @@ paramTypes <- function(x) x@paramTypes
 returnType <- function(x) x@returnType
 
 optional <- function(x) x@optional
+
+setMethod("genome", "TLocus", function(x) x@rg)
+
+setGeneric("castMethod", function(x) standardGeneric("castMethod"))
+
+setMethod("castMethod", "HailPrimitiveType", function(x) paste0("to", x))
+setMethod("castMethod", "TString", function(x) "str")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Coercion (between Java and R representations)
@@ -411,6 +441,22 @@ setMethod("merge", c("HailType", "TArray"), function(x, y) {
 
 setMethod("merge", c("TArray", "HailType"), function(x, y) {
     TArray(merge(elementType(x), y))
+})
+
+setMethod("merge", c("TContainer", "TArray"), function(x, y) {
+    TArray(merge(elementType(x), elementType(y)))
+})
+
+setMethod("merge", c("TArray", "TContainer"), function(x, y) {
+    TArray(merge(elementType(x), elementType(y)))
+})
+
+setMethod("merge", c("HailType", "TSet"), function(x, y) {
+    TSet(merge(x, elementType(y)))
+})
+
+setMethod("merge", c("TSet", "HailType"), function(x, y) {
+    TSet(merge(elementType(x), y))
 })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

@@ -38,6 +38,8 @@ setClass("HailExpression", contains=c("Expression", "VIRTUAL"))
                        slots=c(name="HailSymbol"),
                        contains=c("HailExpression", "SimpleCall"))
 
+.HailApplySeeded <- setClass("HailApplySeeded", contains="HailApply")
+
 .HailGetField <- setClass("HailGetField",
                           slots=c(element="HailSymbol",
                                   container="HailExpression"),
@@ -63,7 +65,7 @@ setClassUnion("HailExpressionList_OR_NULL", c("HailExpressionList", "NULL"))
 
 .HailMakeStruct <- setClass("HailMakeStruct",
                             contains=c("HailExpression",
-                                       "HailExpressionList"))
+                                       "HailVarArgs"))
 
 setClass("HailBinaryOp",
          slots=c(op="HailSymbol",
@@ -161,29 +163,45 @@ HailRef <- function(symbol) {
     .HailRef(symbol=symbol)
 }
 
-HailApply <- function(name, args) {
+HailApply <- function(name, args = list()) {
     .HailApply(SimpleCall(as(name, "HailSymbol"), args))
+}
+
+ensureSeed <- function() {
+    seed <- .GlobalEnv$.Random.seed
+    if (is.null(seed)) {
+        set.seed(NULL)
+        seed <- Recall()
+    }
+    seed
+}
+
+HailApplySeeded <- function(name, args = list()) {
+    .HailApplySeeded(SimpleCall(as(name, "HailSymbol"), c(ensureSeed(), args)))
 }
 
 HailGetField <- function(container, element) {
     .HailGetField(container=container, element=element)
 }
 
-HailExpressionList <- function(data = list()) {
-    listData <- lapply(data, as, "HailExpression", strict=FALSE)
+HailExpressionList <- function(...) {
+    args <- list(...)
+    if (length(args) == 1L && is.list(args[[1L]]))
+        args <- args[[1L]]
+    listData <- lapply(args, as, "HailExpression", strict=FALSE)
     .HailExpressionList(listData=listData)
 }
 
-HailVarArgs <- function(args) {
-    .HailVarArgs(HailExpressionList(args))
+HailVarArgs <- function(...) {
+    .HailVarArgs(HailExpressionList(...))
 }
 
-HailMakeArray <- function(type, elements) {
-    .HailMakeArray(type=type, elements=HailVarArgs(elements))
+HailMakeArray <- function(type, ...) {
+    .HailMakeArray(type=type, elements=HailVarArgs(...))
 }
 
-HailMakeStruct <- function(data) {
-    .HailMakeStruct(HailExpressionList(data))
+HailMakeStruct <- function(...) {
+    .HailMakeStruct(HailVarArgs(...))
 }
 
 HailApplyComparisonOp <- function(op, left, right) {
@@ -252,21 +270,100 @@ setMethod("[[", "HailExpression", function(x, i, j, ...) {
     HailGetField(x, HailSymbol(i))
 })
 
-setMethod("[[", "HailMakeStruct", function(x, i, j, ...) {
-    stopifnot(missing(j), missing(...))
-    as.list(x)[[i]]
-})
-
 symbol <- function(x) x@symbol
+
+setMethod("hailType", "HailExpression",
+          function(x, env = emptyenv()) inferHailType(x, env))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Type inference
 ###
 
-setMethod("hailType", "HailNA", function(x) x@type)
-setMethod("hailType", "HailMakeArray", function(x) x@type)
-setMethod("hailType", "HailGetField",
-          function(x) hailType(x@container)[[name(x@element)]])
+### Potential caching functionality; not yet used
+
+cacheType <- function(expr) {
+    cache <- parent.frame()$x@.cache
+    if (!exists("type", cache))
+        cache$type <- expr
+    cache$type
+}
+
+## setMethod("initialize", "HailExpression", function(.Object, ...) {
+##     .Object <- callNextMethod()
+##     .Object@.cache <- new.env(emptyenv())
+##     .Object
+## })
+
+setGeneric("inferHailType",
+           function(x, env = emptyenv()) standardGeneric("inferHailType"),
+           signature="x")
+
+setMethod("inferHailType", "HailI32", function(x, env) TINT32)
+setMethod("inferHailType", "HailF64", function(x, env) TFLOAT64)
+setMethod("inferHailType", "HailStr", function(x, env) TSTRING)
+setMethod("inferHailType", "HailFalse", function(x, env) TBOOLEAN)
+setMethod("inferHailType", "HailTrue", function(x, env) TBOOLEAN)
+setMethod("inferHailType", "HailMakeStruct",
+          function(x, env) TStruct(lapply(x, inferHailType, env)))
+setMethod("inferHailType", "HailApplyComparisonOp", function(x, env) TBOOLEAN)
+setMethod("inferHailType", "HailApplyBinaryPrimOp",
+          function(x, env) merge(inferHailType(x@left),
+                                 inferHailType(x@right, env)))
+setMethod("inferHailType", "HailApplyUnaryPrimOp",
+          function(x, env) inferHailType(x@x, env))
+setMethod("inferHailType", "HailArrayMap", function(x, env) {
+    env <- list2env(setNames(list(x@array), x@name), parent=env)
+    TArray(inferHailType(x@body, env))
+})
+setMethod("inferHailType", "HailArrayFilter",
+          function(x, env) inferHailType(x@array, env))
+setMethod("inferHailType", "HailArrayLen", function(x, env) TINT64)
+setMethod("inferHailType", "HailIf",
+          function(x, env) inferHailType(x@cnsq, env))
+setMethod("inferHailType", "HailInsertFields", function(x, env) {
+    type <- inferHailType(x@old, env)
+    type[names(x@fields)] <- lapply(x@fields, inferHailType, env)
+    type
+})
+setMethod("inferHailType", "HailSelectFields",
+          function(x, env) inferHailType(x@old, env)[names(x@fields)])
+setMethod("inferHailType", "Accumulation", function(x, env) {
+    functionReturnType(x@op, x@seq_op_args, functionTag(x))
+})
+setMethod("inferHailType", "HailNA", function(x, env) x@type)
+setMethod("inferHailType", "HailMakeArray", function(x, env) x@type)
+setMethod("inferHailType", "HailGetField",
+          function(x, env) inferHailType(x@container, env)[[name(x@element)]])
+
+### NOTE: The type of a reference is only inferrable if we know the
+### environment in which to resolve it (such as in map operations).
+setMethod("inferHailType", "HailRef", function(x, env) {
+    env[[symbol]]
+})
+
+setMethod("inferHailType", "HailApply", function(x, env) {
+    functionReturnType(x@name, x@args, functionTag(x))
+})
+
+setGeneric("functionTag", function(x) NULL)
+setMethod("functionTag", "Accumulation", function(x) "agg")
+setMethod("functionTag", "HailApplySeeded", function(x) "seeded")
+
+lookupFunction <- function(name, tag = NULL) {
+    prefix <- "ht"
+    if (!is.null(tag))
+        prefix <- paste0(prefix, "_", tag)
+    match.fun(paste0(prefix, "_", name))
+}
+
+functionReturnType <- function(name, args, tag = NULL) {
+    f <- lookupFunction(name, tag)
+    tryCatch(do.call(f, as.list(args)),
+             error=stop("Function ",
+                        paste0(name, "(", paste(args, collapse=", "),
+                               ")"),
+                        " not found"))
+}
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Coercion
@@ -344,9 +441,6 @@ setMethod("ir_args", "HailExpression",
                                slotNames(x)))
 
 setMethod("ir_args", "HailApply", function(x) c(x@name, x@args))
-
-setMethod("ir_args", "HailMakeStruct",
-          function(x) as.list(zipup(Pairs(names(x), as.list(x)))))
 
 setMethod("ir_args", "HailStr", function(x) list(paste0("\"", x@x, "\"")))
 

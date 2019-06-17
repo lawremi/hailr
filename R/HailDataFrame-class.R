@@ -302,5 +302,5 @@ setGeneric("ncolsAsDF", function(x) ncol(as.data.frame(escapeColumn(x))))
 
 seq_along_rows <- function(x) {
     expr <- HailApplyScanOp(Accumulation("Count"))
-    Promise(hailTable(x), expr, TINT64)
+    Promise(hailTable(x), expr)
 }
