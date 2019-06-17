@@ -26,9 +26,9 @@ setClass("org.apache.spark.sql.Dataset", contains="JavaObject")
 ### A utility class that lets us dispatch on whether a promise is
 ### derived from the 'row' struct, which holds the columns in the
 ### context of a HailTableMapRows() call.
-.HailTableRowContext <- setClass("HailTableRowContext",
-                                 slots=c(hailTable="HailTable"),
-                                 contains="HailExpressionContext")
+.HailTableMapRowsContext <- setClass("HailTableMapRowsContext",
+                                     slots=c(hailTable="HailTable"),
+                                     contains="HailExpressionContext")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Construction
@@ -53,8 +53,8 @@ setMethod("transmit", c("org.apache.spark.sql.Dataset", "is.hail.HailContext"),
 setMethod("unmarshal", c("is.hail.expr.ir.TableIR", "ANY"),
           function(x, skeleton) unmarshal(HailTable(x, context(x)), skeleton))
 
-HailTableRowContext <- function(hailTable) {
-    .HailTableRowContext(hailTable=hailTable)
+HailTableMapRowsContext <- function(hailTable) {
+    .HailTableMapRowsContext(hailTable=hailTable)
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -63,13 +63,14 @@ HailTableRowContext <- function(hailTable) {
 
 setMethod("hailType", "HailTable", function(x) hailType(x$expr))
 
-setMethod("hailType", "HailTableRowContext", function(x) hailType(x@hailTable))
+setMethod("hailType", "HailTableMapRowsContext",
+          function(x) hailType(x@hailTable))
 
 ## We lazily (as features are needed) reimplement the Python API
 
 .HailTable$methods(
     row = function() {
-        Promise(HailRef(HailSymbol("row")), HailTableRowContext(.self))
+        Promise(HailRef(HailSymbol("row")), HailTableMapRowsContext(.self))
     },
     rowValue = function() {
         row <- .self$row()
@@ -169,7 +170,7 @@ hailTable <- function(x) x@hailTable
     x
 }
 
-setMethod("contextualLength", c("HailPromise", "HailTableRowContext"),
+setMethod("contextualLength", c("HailPromise", "HailTableMapRowsContext"),
           function(x, context) nrow(hailTable(context)))
 
 src <- function(x) x@src
@@ -179,13 +180,14 @@ src <- function(x) x@src
 ##     extractROWS(x, logicalPromise(i))
 ## })
 
-setMethod("parent", "HailTableRowContext", function(x) context(hailTable(x)))
+setMethod("parent", "HailTableMapRowsContext",
+          function(x) context(hailTable(x)))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Collection
 ###
 
-setMethod("deriveTable", "HailTableRowContext", function(context, expr) {
+setMethod("deriveTable", "HailTableMapRowsContext", function(context, expr) {
     ### TODO: we always get the keys back, so if expr is simply a key
     ###       there is no reason to $select() here.
     hailTable(context)$select(x = expr)$selectGlobals()
@@ -210,7 +212,7 @@ joinGlobals <- function(left, right) {
 ### Summarization
 ###
 
-setMethod("head", "HailTableRowContext", function(x, n) {
+setMethod("head", "HailTableMapRowsContext", function(x, n) {
     initialize(x, hailTable=hailTable(x)$head(n))
 })
 

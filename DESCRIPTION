@@ -25,9 +25,9 @@ Collate:
 	HailType-class.R
 	HailExpression-class.R
 	HailContext-class.R
-	HailGlobalContext-class.R
 	HailPromise-class.R
 	HailTableExpression-class.R
+	HailMapGlobalsContext-class.R
 	HailTable-class.R
 	HailDataFrame-class.R
 	HailGRanges-class.R
@@ -35,12 +35,12 @@ Collate:
 	HailMetaDataFrame-class.R
 	HailExperiment-class.R
 	HailContextManager-class.R
-	functions.R
+	ht_functions.R
 	SparkDriverManager-class.R
 	SparkConfig-class.R
 	HailConfig-class.R
 	JavaPath-class.R
-	connection.R
+	HailConnection.R
 	install-utils.R
 	java-utils.R
 	typed_list.R
