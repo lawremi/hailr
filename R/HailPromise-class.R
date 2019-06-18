@@ -335,42 +335,42 @@ setAs("DataFrame", "StructPromise", function(from) {
 ### Iteration
 ###
 
-.ArrayApplyContext <- setClass("ArrayApplyContext",
-                               slots=c(arrayPromise="ContainerPromise",
-                                       argName="HailSymbol"),
-                               contains="HailExpressionContext")
+.ApplyContext <- setClass("ApplyContext",
+                          slots=c(containerPromise="ContainerPromise",
+                                  argName="HailSymbol"),
+                          contains="HailExpressionContext")
 
-ArrayApplyContext <- function(arrayPromise, argName = HailSymbol(uuid("xi"))) {
-    .ArrayApplyContext(arrayPromise=arrayPromise, argName=argName)
+ApplyContext <- function(containerPromise, argName = HailSymbol(uuid("xi"))) {
+    .ApplyContext(containerPromise=containerPromise, argName=argName)
 }
 
-arrayPromise <- function(x) x@arrayPromise
-`arrayPromise<-` <- function(x, value) {
-    x@arrayPromise <- value
+containerPromise <- function(x) x@containerPromise
+`containerPromise<-` <- function(x, value) {
+    x@containerPromise <- value
     x
 }
 
 argName <- function(x) x@argName
 
-setMethod("parent", "ArrayApplyContext",
+setMethod("parent", "ApplyContext",
           function(x) {
-              context(arrayPromise(x))
+              context(containerPromise(x))
           })
 
-setMethod("extractROWS", c("ArrayApplyContext", "BooleanPromise"),
+setMethod("extractROWS", c("ApplyContext", "BooleanPromise"),
           function(x, i) {
               stopifnot(derivesFrom(context(i), x))
-              expr <- HailArrayFilter(arrayPromise(x), argName(x), expr(i))
+              expr <- HailArrayFilter(containerPromise(x), argName(x), expr(i))
               ### We are still inside of the iteration, so we just
               ### replace the underlying array promise, preserving the
-              ### expr and keeping it in an ArrayApplyContext. This is
+              ### expr and keeping it in an ApplyContext. This is
               ### probably asking for trouble.
-              arrayPromise(x) <- Promise(expr, context(arrayPromise(x)))
+              containerPromise(x) <- Promise(expr, context(containerPromise(x)))
               x
           })
 
 setMethod("contextualLength",
-          c("HailPromise", "ArrayApplyContext"),
+          c("HailPromise", "ApplyContext"),
           function(x, context) {
               lengths(arrayMap(x))
           })
@@ -381,7 +381,7 @@ setGeneric("contextualNames",
 setMethod("contextualNames", c("HailPromise", "HailExpressionContext"),
           function(x, context) NULL)
 
-setMethod("contextualNames", c("DictPromise", "ArrayApplyContext"),
+setMethod("contextualNames", c("DictPromise", "ApplyContext"),
           function(x, context) {
               cast(promiseMethodCall(x, "keys"), TArray(TSTRING))
           })
@@ -390,9 +390,9 @@ setGeneric("deriveTable",
            function(context, expr) standardGeneric("deriveTable"),
            signature="context")
 
-setMethod("deriveTable", "ArrayApplyContext",
+setMethod("deriveTable", "ApplyContext",
           function(context, expr) {
-              deriveTable(context(arrayPromise(context)),
+              deriveTable(context(containerPromise(context)),
                           arrayMapExpr(context, expr))
           })
 
@@ -401,15 +401,16 @@ setClass("AtomicApplyContext", contains="HailContext")
 setMethod("contextualLength", c("HailPromise", "AtomicApplyContext"),
           function(x, context) 1L)
 
-.ArrayApplyType <- setClass("ArrayApplyType",
-                            slots=c(elementType="HailType", argName="HailSymbol"),
-                            contains="HailType")
+.ApplyType <- setClass("ApplyType",
+                       slots=c(elementType="HailType", argName="HailSymbol"),
+                       contains="HailType")
 
-setMethod("hailType", "ArrayApplyContext",
-          function(x) .ArrayApplyType(elementType=elementType(hailType(arrayPromise(x))),
-                                      argName=argName(x)))
+setMethod("hailType", "ApplyContext",
+          function(x)
+              .ApplyType(elementType=elementType(hailType(containerPromise(x))),
+                         argName=argName(x)))
 
-as.environment.ArrayApplyType <- function(x) {
+as.environment.ApplyType <- function(x) {
     setNames(list(elementType(x)), argName(x))
 }
 
@@ -419,7 +420,7 @@ elementPromise <- function(context) {
 
 arrayMapExpr <- function(context, expr) {
     argName <- argName(context)
-    container <- arrayPromise(context)
+    container <- containerPromise(context)
     ans <- expr(cast(container, TArray(elementType(hailType(container)))))
     identity <- identical(expr, HailRef(argName))
     if (!identity) {
@@ -431,17 +432,17 @@ arrayMapExpr <- function(context, expr) {
 
 arrayMap <- function(body) {
     expr <- arrayMapExpr(context(body), expr(body))
-    Promise(expr, context(arrayPromise(context(body))))
+    Promise(expr, context(containerPromise(context(body))))
 }
 
 ## Another case we may want to handle: df$array[[1]]. Calling `[[` on
 ## an ArrayPromise could first filter to row 'i', then do
-## elementPromise(ArrayApplyContext(x)), but the array map would be
+## elementPromise(ApplyContext(x)), but the array map would be
 ## deferred to fulfill().
 
 setMethod("lapply", "ArrayPromise", function(X, FUN, ...) {
-    ans <- FUN(elementPromise(ArrayApplyContext(X)), ...)
-    if (is(context(ans), "ArrayApplyContext"))
+    ans <- FUN(elementPromise(ApplyContext(X)), ...)
+    if (is(context(ans), "ApplyContext"))
         ans <- arrayMap(ans)
     ans
 })
