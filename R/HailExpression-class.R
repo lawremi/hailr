@@ -338,7 +338,7 @@ setMethod("inferHailType", "HailGetField",
 ### NOTE: The type of a reference is only inferrable if we know the
 ### environment in which to resolve it (such as in map operations).
 setMethod("inferHailType", "HailRef", function(x, env) {
-    env[[symbol]]
+    env[[name(symbol(x))]]
 })
 
 setMethod("inferHailType", "HailApply", function(x, env) {

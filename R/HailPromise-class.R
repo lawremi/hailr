@@ -159,13 +159,8 @@ setMethod("dim", "ArrayPromise", function(x) {
     c(length(x), ncol)
 })
 
-setMethod("names", "HailPromise", function(x) contextualNames(x, context(x)))
-
-setGeneric("contextualNames",
-           function(x, context) standardGeneric("contextualNames"))
-
-setMethod("contextualNames", c("HailPromise", "HailExpressionContext"),
-          function(x, context) NULL)
+setMethod("names", "HailDictPromise",
+          function(x) contextualNames(x, context(x)))
 
 setMethod("extractCOLS", "ArrayPromise", function(x, i) {
     stopifnot(is.numeric(i), !anyNA(i), all(i > 0)) # TODO: support logical
@@ -379,6 +374,12 @@ setMethod("contextualLength",
           function(x, context) {
               lengths(arrayMap(x))
           })
+
+setGeneric("contextualNames",
+           function(x, context) standardGeneric("contextualNames"))
+
+setMethod("contextualNames", c("HailPromise", "HailExpressionContext"),
+          function(x, context) NULL)
 
 setMethod("contextualNames", c("DictPromise", "ArrayApplyContext"),
           function(x, context) {
