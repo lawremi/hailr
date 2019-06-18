@@ -260,6 +260,14 @@ setGeneric("castMethod", function(x) standardGeneric("castMethod"))
 setMethod("castMethod", "HailPrimitiveType", function(x) paste0("to", x))
 setMethod("castMethod", "TString", function(x) "str")
 
+setMethod("merge", c("TContainer", "TContainer"), function(x, y) {
+    initialize(x, y)
+})
+
+setMethod("merge", c("TDict", "TContainer"), function(x, y) {
+    initialize(x, valueType=elementType(y))
+})
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Coercion (between Java and R representations)
 ###

@@ -418,10 +418,12 @@ elementPromise <- function(context) {
 
 arrayMapExpr <- function(context, expr) {
     argName <- argName(context)
-    ans <- expr(arrayPromise(context))
+    container <- arrayPromise(context)
+    ans <- expr(cast(container, TArray(elementType(hailType(container)))))
     identity <- identical(expr, HailRef(argName))
     if (!identity) {
         ans <- HailArrayMap(argName, ans, expr)
+        ans <- cast(ans, merge(hailType(container), hailType(ans)))
     }
     ans
 }
