@@ -79,7 +79,7 @@ setMethod("hailType", "HailMatrixTable",
     },
     globals = function() {
         Promise(globalType(hailType(.self)), "global",
-                HailGlobalContext(.self))
+                HailMapGlobalsContext(.self))
     },
     entries = function() {
         HailTable(.self$impl$entriesTable())

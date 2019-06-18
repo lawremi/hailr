@@ -80,8 +80,7 @@ setMethod("hailType", "HailTableMapRowsContext",
         keys(hailType(.self))
     },
     globals = function() {
-        Promise(globalType(hailType(.self)), HailRef(HailSymbol("global")),
-                HailGlobalContext(.self))
+        Promise(HailRef(HailSymbol("global")), HailMapGlobalsContext(.self))
     },
     select = function(...) {
         fields <- c(...)
@@ -193,7 +192,7 @@ setMethod("deriveTable", "HailTableMapRowsContext", function(context, expr) {
     hailTable(context)$select(x = expr)$selectGlobals()
 })
 
-setMethod("deriveTable", "HailGlobalContext", function(context, expr) {
+setMethod("deriveTable", "HailMapGlobalsContext", function(context, expr) {
     table <- globalTable(src(context)$selectGlobals(x = expr))
     table$select(x = table$globals()$x)
 })
