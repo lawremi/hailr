@@ -142,7 +142,7 @@ setMethod("inferHailType", "UnaryHailTableExpression", function(x, env) {
 })
 
 as.environment.TableType <- function(x) {
-    list(global=globalType(x), row=rowType(x))
+    list2env(list(global=globalType(x), row=rowType(x)), parent=emptyenv())
 }
 
 setMethod("inferHailType", "HailTableMapRows", function(x, env) {

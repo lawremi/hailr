@@ -312,7 +312,8 @@ setMethod("inferHailType", "HailApplyBinaryPrimOp",
 setMethod("inferHailType", "HailApplyUnaryPrimOp",
           function(x, env) inferHailType(x@x, env))
 setMethod("inferHailType", "HailArrayMap", function(x, env) {
-    env <- list2env(setNames(list(x@array), x@name), parent=env)
+    env <- new.env(parent=env)
+    env[[as.character(x@name)]] <- elementType(inferHailType(x@array, env))
     TArray(inferHailType(x@body, env))
 })
 setMethod("inferHailType", "HailArrayFilter",
@@ -328,10 +329,12 @@ setMethod("inferHailType", "HailInsertFields", function(x, env) {
 setMethod("inferHailType", "HailSelectFields",
           function(x, env) inferHailType(x@old, env)[names(x@fields)])
 setMethod("inferHailType", "Accumulation", function(x, env) {
-    functionReturnType(x@op, x@seq_op_args, functionTag(x))
+    functionReturnType(x@op, x@seq_op_args, env, functionTag(x))
 })
 setMethod("inferHailType", "HailNA", function(x, env) x@type)
 setMethod("inferHailType", "HailMakeArray", function(x, env) x@type)
+setMethod("inferHailType", "HailToArray",
+          function(x, env) TArray(elementType(inferHailType(x@a))))
 setMethod("inferHailType", "HailGetField",
           function(x, env) inferHailType(x@container, env)[[name(x@element)]])
 
@@ -342,7 +345,7 @@ setMethod("inferHailType", "HailRef", function(x, env) {
 })
 
 setMethod("inferHailType", "HailApply", function(x, env) {
-    functionReturnType(x@name, x@args, functionTag(x))
+    functionReturnType(x@name, x@args, env, functionTag(x))
 })
 
 setGeneric("functionTag", function(x) NULL)
@@ -356,13 +359,16 @@ lookupFunction <- function(name, tag = NULL) {
     match.fun(paste0(prefix, "_", name))
 }
 
-functionReturnType <- function(name, args, tag = NULL) {
+functionReturnType <- function(name, args, env, tag = NULL) {
     f <- lookupFunction(name, tag)
-    tryCatch(do.call(f, as.list(args)),
-             error=stop("Function ",
-                        paste0(name, "(", paste(args, collapse=", "),
-                               ")"),
-                        " not found"))
+    types <- lapply(args, hailType, env)
+    tryCatch(do.call(f, types),
+             error=function(e) {
+                 stop("Hail function ",
+                      paste0(name, "(", toString(lapply(types, toString)),
+                             ")"),
+                      " not found")
+             })
 }
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

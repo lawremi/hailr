@@ -513,7 +513,7 @@ setMethods("Logic",
                 c("HailPromise", "HailPromise")),
            function(e1, e2) {
                op <- paste0(.Generic, .Generic)
-               promiseMethodCall(e1, op, TBOOLEAN, e2)
+               promiseMethodCall(e1, op, e2)
            })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -551,7 +551,7 @@ setMethod("strsplit", "StringPromise",
                         identical(perl, FALSE),
                         identical(useBytes, FALSE),
                         isSingleString(split))
-              promiseMethodCall(x, "split", TArray(TSTRING), split)
+              promiseMethodCall(x, "split", split)
           })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

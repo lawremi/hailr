@@ -5,9 +5,12 @@
 ### Formal classes corresponding to types in the Hail expression
 ### language. There is a class for each relevant Java representation,
 ### and a corresponding high-level class that models the Java
-### object. This makes the types self-documenting. At some point we
-### might want to lazily construct and cache the Java representation,
-### like the Python interface, but we are not optimizing yet.
+### object. This makes the types self-documenting.
+
+### At some point we might want to lazily compute and cache the type
+### and Java representation, like the Python interface, but we are not
+### optimizing yet. By not caching, we are more likely to catch bugs,
+### and debugging will be easier.
 ###
 
 ### FIXME: Do we want a proper TNumericArray, and a corresponding
@@ -167,7 +170,7 @@ setClass("is.hail.expr.types.virtual.TVoid",
 setClass("TVoid", contains="HailType")
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### Constructors (could be memoized)
+### R/Hail type mappings
 ###
 
 setGeneric("hailType", function(x, ...) standardGeneric("hailType"))
@@ -194,6 +197,11 @@ setMethod("vectorMode", "TFloat32", function(x) "numeric")
 setMethod("vectorMode", "TInt32", function(x) "integer")
 setMethod("vectorMode", "TInt64", function(x) "numeric") # but not really
 setMethod("vectorMode", "TString", function(x) "character")
+setMethod("vectorMode", "TContainer", function(x) "list")
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Constructors (could be memoized)
+###
 
 TArray <- function(elementType) {
     .TArray(elementType=elementType)
@@ -218,7 +226,10 @@ TInterval <- function(positionType) {
 ### Accessors
 ###
 
-setMethod("elementType", "TContainer", function(x) x@elementType)
+setMethod("elementType", "TIterable", function(x) x@elementType)
+
+setMethod("elementType", "TDict",
+          function(x) TStruct(key=keyType(x), value=valueType(x)))
 
 representationType <- function(x) x@representationType
 
@@ -410,6 +421,13 @@ baseTypeName <- function(x) sub("^T", "", class(x))
 setMethod("as.character", "HailType", baseTypeName)
 setMethod("as.character", "TContainer", function(x) {
     paste0(callNextMethod(), "[", elementType(x), "]")
+})
+
+setMethod("show", "HailType", function(object) {
+    if (object@optional)
+        cat("?")
+    cat(as.character(object))
+    cat("\n")
 })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
