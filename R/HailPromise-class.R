@@ -29,7 +29,8 @@
 ### missingness explicitly. No big deal.
 
 setClass("HailPromise",
-         slots=c(expr="HailExpression"),
+         slots=c(expr="HailExpression",
+                 NAMES="HailExpression_OR_NULL"),
          contains=c("SimplePromise", "VIRTUAL"))
 
 setClass("HailAtomicPromise", contains=c("HailPromise", "Vector", "VIRTUAL"))
@@ -167,15 +168,10 @@ setMethod("dim", "HailPromise", function(x) {
     contextualDim(x, context(x))
 })
 
-setMethod("dim", "ArrayPromise", function(x) {
-    ncol <- unique(lengths(x))
-    if (length(ncol) > 1L)
-        stop("array is not rectangular")
-    c(length(x), ncol)
-})
+setMethod("names", "HailPromise",
+          function(x) if (!is.null(x@NAMES)) Promise(x@NAMES, context(x)))
 
-setMethod("names", "HailDictPromise",
-          function(x) contextualNames(x, context(x)))
+setMethod("names", "StructPromise", function(x) names(as.list(x)))
 
 setMethod("extractCOLS", "ArrayPromise", function(x, i) {
     stopifnot(is.numeric(i), !anyNA(i), all(i > 0)) # TODO: support logical
@@ -193,10 +189,8 @@ setGeneric("heads", signature="x")
 
 setMethod("heads", "ArrayPromise", function(x, n=6L) {
     n <- unique(n)
-    stopifnot(length(n) > 1L)
-    if (n < 0L)
-        end <- ncol(x) - n
-    else end <- n
+    stopifnot(length(n) == 1L && n > 0L)
+    end <- n
     promiseMethodCall("[:*]", x, end - 1L)
 })
 
@@ -204,10 +198,8 @@ setGeneric("tails", signature="x")
 
 setMethod("tails", "ArrayPromise", function(x, n=6L) {
     n <- unique(n)
-    stopifnot(length(n) > 1L)
-    if (n < 0L)
-        start <- abs(n)
-    else start <- ncol(x) - n
+    stopifnot(length(n) == 1L && n < 0L)
+    start <- abs(n)
     promiseMethodCall("[*:]", x, start)
 })
 

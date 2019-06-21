@@ -13,6 +13,8 @@ setClass("is.hail.expr.ir.BaseIR", contains="JavaObject")
 
 setClass("HailExpression", contains=c("Expression", "VIRTUAL"))
 
+setClassUnion("HailExpression_OR_NULL", c("HailExpression", "NULL"))
+
 .HailSymbol <- setClass("HailSymbol", contains="SimpleSymbol")
 
 .HailI32 <- setClass("HailI32", slots=c(x="integer"),
