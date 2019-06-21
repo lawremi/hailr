@@ -92,12 +92,12 @@ setMethod("hailType", "HailTableMapRowsContext",
     },
     mapRows = function(expr) {
         if (getOption("verbose")) {
-            message("map: {", as.character(expr), "}")
+            message("map: {", as.character(expr(expr)), "}")
         }
-        HailTable(HailTableMapRows(.self$expr, expr), .self$context)
+        HailTable(HailTableMapRows(.self$expr, expr(expr)), .self$context)
     },
     mapGlobals = function(expr) {
-        HailTable(HailTableMapGlobals(.self$expr, expr), .self$context)
+        HailTable(HailTableMapGlobals(.self$expr, expr(expr)), .self$context)
     },
     annotate = function(...) {
         s <- DataFrame(...)

@@ -38,7 +38,7 @@ setClassUnion("HailExpression_OR_NULL", c("HailExpression", "NULL"))
 
 .HailApply <- setClass("HailApply",
                        slots=c(name="HailSymbol"),
-                       contains=c("HailExpression", "SimpleCall"))
+                       contains=c("SimpleCall", "HailExpression"))
 
 .HailApplySeeded <- setClass("HailApplySeeded", contains="HailApply")
 
