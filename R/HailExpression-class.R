@@ -67,6 +67,10 @@ setClassUnion("HailExpressionList_OR_NULL", c("HailExpressionList", "NULL"))
                             contains=c("HailExpression",
                                        "HailVarArgs"))
 
+.HailToArray <- setClass("HailToArray",
+                         slots=c(a="HailExpression"),
+                         contains="HailExpression")
+
 setClass("HailBinaryOp",
          slots=c(op="HailSymbol",
                  left="ANY", right="ANY"),
@@ -202,6 +206,10 @@ HailMakeArray <- function(type, ...) {
 
 HailMakeStruct <- function(...) {
     .HailMakeStruct(HailVarArgs(...))
+}
+
+HailToArray <- function(a) {
+    .HailToArray(a=a)
 }
 
 HailApplyComparisonOp <- function(op, left, right) {

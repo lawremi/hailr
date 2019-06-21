@@ -6,6 +6,21 @@
 ### collection, the promise evaluates the expression in the assigned context.
 ###
 
+### Hail has two types of data structures: scalar and container. The R
+### API is vectorized, so we treat these data structures as vectors
+### (typically columns in a Table). Thus, scalars become atomic
+### vectors, and containers become lists of containers. The latter is
+### somewhat complicated in that the R user will naturally need to
+### apply a function over the list in order to manipulate the
+### containers themselves. The most complicated case is the "dict"
+### container, which we model as a named vector, but only in the
+### context of applying over the list. Two types of containers,
+### "struct" and "tuple", are along the second (column) dimension, so
+### they are implemented as actual R lists of promises. A Hail
+### "array", if rectangular (every array in the list has the same
+### length), can represent an R matrix, but only the HailMatrix
+### wrapper will behave like a matrix.
+
 ### Note on missingness:
 
 ### Hail propagates missingness in a way that is mostly compatible
@@ -308,8 +323,17 @@ setMethod("cast", c("HailPromise", "HailPrimitiveType"), function(x, type) {
     }
 })
 
-setMethod("cast", c("ArrayPromise", "TArray"), function(x, type) {
-    lapply(x, cast, elementType(type))
+setMethod("cast", c("ContainerPromise", "TContainer"), function(x, type) {
+    ht <- hailType(x)
+    if (identical(ht, type))
+        x
+    else if (identical(elementType(ht), elementType(type)))
+        promiseCall(castContainerOp(type), x)
+    else cast(lapply(x, cast, elementType(type)), type)
+})
+
+setMethod("cast", c("HailPromise", "TContainer"), function(x, type) {
+    cast(promiseCall(HailMakeArray, type, x), type)
 })
 
 setMethod("cast", c("ANY", "HailPrimitiveType"), function(x, type) {
@@ -325,10 +349,27 @@ setMethod("cast", c("data.frame", "TStruct"), function(x, type) {
     x
 })
 
+## In theory, stuff like endoapply() should just work with this
+setMethod(S4Vectors:::coerce2, "HailPromise",
+          function(from, to) {
+              casted <- cast(from, hailType(to))
+              if (!is(casted, "HailPromise"))
+                  Promise(casted, context(to))
+              else casted
+          })
+
 setMethod("as.list", "ContainerPromise", as.list.Promise)
 
 setAs("DataFrame", "StructPromise", function(from) {
     promiseCall(HailMakeStruct, args=as.list(from))
+})
+
+setAs("HailPromise", "ArrayPromise", function(from) {
+    cast(from, TArray(hailType(from)))
+})
+
+setAs("ContainerPromise", "ArrayPromise", function(from) {
+    cast(from, TArray(elementType(hailType(from))))
 })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -402,32 +443,38 @@ setMethod("contextualLength", c("HailPromise", "AtomicApplyContext"),
           function(x, context) 1L)
 
 .ApplyType <- setClass("ApplyType",
-                       slots=c(elementType="HailType", argName="HailSymbol"),
+                       slots=c(env="environment"),
                        contains="HailType")
 
 setMethod("hailType", "ApplyContext",
-          function(x)
-              .ApplyType(elementType=elementType(hailType(containerPromise(x))),
-                         argName=argName(x)))
+          function(x) {
+              container <- containerPromise(x)
+              parent <- as.environment(hailType(context(container)))
+              env <- new.env(parent=parent)
+              env[[as.character(argName(x))]] <-
+                  elementType(hailType(container))
+              .ApplyType(env=env)
+          })
 
-as.environment.ApplyType <- function(x) {
-    setNames(list(elementType(x)), argName(x))
-}
+as.environment.ApplyType <- function(x) x@env
 
 elementPromise <- function(context) {
-    Promise(HailRef(argName(context)), context)
+    promise <- Promise(HailRef(argName(context)), context)
+    if (is(containerPromise(context), "DictPromise"))
+        promise <- initialize(promise$value, NAMES=expr(promise$key))
+    promise
 }
 
 arrayMapExpr <- function(context, expr) {
     argName <- argName(context)
     container <- containerPromise(context)
-    ans <- expr(cast(container, TArray(elementType(hailType(container)))))
     identity <- identical(expr, HailRef(argName))
-    if (!identity) {
-        ans <- HailArrayMap(argName, ans, expr)
-        ans <- cast(ans, merge(hailType(container), hailType(ans)))
+    if (identity) {
+        expr(container)
+    } else {
+        array <- expr(as(container, "ArrayPromise"))
+        HailArrayMap(argName, array, expr)
     }
-    ans
 }
 
 arrayMap <- function(body) {
@@ -440,11 +487,17 @@ arrayMap <- function(body) {
 ## elementPromise(ApplyContext(x)), but the array map would be
 ## deferred to fulfill().
 
-setMethod("lapply", "ArrayPromise", function(X, FUN, ...) {
+## FIXME: lapply() should really return a list, not an ArrayPromise.
+
+## Note that we wrap scalars into arrays for consistency. unlist()
+## could be smart enough to coalesce with MakeArray() when it is
+## called with a single argument.
+
+setMethod("lapply", "ContainerPromise", function(X, FUN, ...) {
     ans <- FUN(elementPromise(ApplyContext(X)), ...)
     if (is(context(ans), "ApplyContext"))
-        ans <- arrayMap(ans)
-    ans
+        arrayMap(ans)
+    else as(ans, "ArrayPromise")
 })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

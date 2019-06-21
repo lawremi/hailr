@@ -271,6 +271,10 @@ setGeneric("castMethod", function(x) standardGeneric("castMethod"))
 setMethod("castMethod", "HailPrimitiveType", function(x) paste0("to", x))
 setMethod("castMethod", "TString", function(x) "str")
 
+castContainerOp <- function(x) {
+    match.fun(paste0("HailTo", baseTypeName(x)))
+}
+
 setMethod("merge", c("TContainer", "TContainer"), function(x, y) {
     initialize(x, y)
 })
