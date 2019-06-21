@@ -70,12 +70,12 @@ setClass("is.hail.expr.types.virtual.TStringOptional",
          contains="is.hail.expr.types.virtual.TString")
 TSTRING <- setClass("TString", contains="HailPrimitiveType")()
 
-## raw vector
-setClass("is.hail.expr.types.virtual.TBinary",
-         contains="is.hail.expr.types.virtual.Type")
-setClass("is.hail.expr.types.virtual.TBinaryOptional",
-         contains="is.hail.expr.types.virtual.TBinary")
-setClass("TBinary", contains="HailType")
+## Similar to RawList (as a column); currently unsupported
+## setClass("is.hail.expr.types.virtual.TBinary",
+##          contains="is.hail.expr.types.virtual.Type")
+## setClass("is.hail.expr.types.virtual.TBinaryOptional",
+##          contains="is.hail.expr.types.virtual.TBinary")
+## setClass("TBinary", contains="HailType")
 
 setClass("is.hail.expr.types.virtual.TContainer",
          contains="is.hail.expr.types.virtual.Type")
