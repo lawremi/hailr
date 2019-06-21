@@ -31,6 +31,7 @@ Collate:
 	HailTable-class.R
 	HailDataFrame-class.R
 	HailGRanges-class.R
+	HailMatrix-class.R
 	HailMatrixTable-class.R
 	HailMetaDataFrame-class.R
 	HailExperiment-class.R
