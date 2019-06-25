@@ -262,9 +262,7 @@ setMethod("extractROWS", "StructPromise", function(x, i) {
 })
 
 insertFields <- function(x, fields) {
-    fields <- as.list(fields)
-    fields <- fields[!mapply(identical, x[names(fields)], fields)]
-    promiseCall(HailInsertFields, args=c(x, fields))
+    promiseCall(HailInsertFields, x, args=c(list(x), as.list(fields)))
 }
 
 setMethod("mergeROWS", "StructPromise", function(x, i, value) {

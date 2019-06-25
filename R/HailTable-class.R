@@ -91,11 +91,8 @@ setMethod("hailType", "HailTableMapRowsContext",
         fields <- c(...)
         .self$mapGlobals(expr(.self$global()[fields]))
     },
-    mapRows = function(expr) {
-        if (getOption("verbose")) {
-            message("map: {", as.character(expr(expr)), "}")
-        }
-        HailTable(HailTableMapRows(.self$expr, expr(expr)), .self$context)
+    mapRows = function(p) {
+        HailTable(HailTableMapRows(.self$expr, expr(p)), .self$context)
     },
     mapGlobals = function(expr) {
         HailTable(HailTableMapGlobals(.self$expr, expr(expr)), .self$context)

@@ -284,6 +284,12 @@ setMethod("merge", c("TDict", "TContainer"), function(x, y) {
 })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Coercion (R-level)
+###
+
+setAs("list", "TStruct", function(from) TStruct(from))
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Coercion (between Java and R representations)
 ###
 

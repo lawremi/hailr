@@ -10,6 +10,7 @@ test_HailPromise_operators <- function() {
                        f = integer_list(1:3, integer(0L), 5:7),
                        stringsAsFactors = FALSE
                        )
+    options(verbose=TRUE)
     kt <- send(rows, hail())
 
     do_transform <- function(x)

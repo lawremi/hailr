@@ -242,14 +242,12 @@ HailIf <- function(cond, cnsq, altr) {
     .HailIf(cond=cond, cnsq=cnsq, altr=altr)
 }
 
-HailInsertFields <- function(old, fields) {
-    ### TODO: optimize by coalescing previous InsertFields
-    .HailInsertFields(old=old, fields=HailVarArgs(fields))
+HailInsertFields <- function(old, ...) {
+    .HailInsertFields(old=old, fields=HailVarArgs(...))
 }
 
 HailSelectFields <- function(old, fields) {
     ### TODO: optimize by coalescing previous Select()
-    ### TODO: optimize by coalescing InsertFields (drop the unneeded ones)
     .HailSelectFields(old=old, fields=fields)
 }
 
@@ -465,7 +463,7 @@ setMethod("to_ir", "List", function(x, ...) to_ir(as.list(x), ...))
 setMethod("to_ir", "HailVarArgs",
           function(x, ...) {
               if (is.character(names(x)))
-                  x <- mapply(list, lapply(names(x), HailSymbol), x)
+                  x <- Map(list, lapply(names(x), HailSymbol), x)
               paste(vapply(x, to_ir, character(1L), ...),
                     collapse=" ")
           })

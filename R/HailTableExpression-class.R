@@ -41,15 +41,18 @@ setClass("UnaryHailTableExpression",
                             })
 
 .HailTableMapRows <- setClass("HailTableMapRows",
-                              slots=c(expr="HailExpression"),
+                              slots=c(child="HailTableExpression",
+                                      expr="HailExpression"),
                               contains="UnaryHailTableExpression")
 
 .HailTableMapGlobals <- setClass("HailTableMapGlobals",
-                                 slots=c(expr="HailExpression"),
+                                 slots=c(child="HailTableExpression",
+                                         expr="HailExpression"),
                                  contains="UnaryHailTableExpression")
 
 .HailTableFilter <- setClass("HailTableFilter",
-                             slots=c(pred="HailExpression"),
+                             slots=c(child="HailTableExpression",
+                                     pred="HailExpression"),
                              contains="UnaryHailTableExpression")
 
 .HailTableJoin <- setClass("HailTableJoin",
@@ -65,12 +68,17 @@ setClass("UnaryHailTableExpression",
                            })
 
 .HailTableHead <- setClass("HailTableHead",
-                           slots=c(n="integer"),
+                           slots=c(child="HailTableExpression", n="integer"),
                            validity=function(object) {
                                if (!isSingleInteger(object@n))
                                    "@n must be single, non-NA integer"
                            },
                            contains="UnaryHailTableExpression")
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### These operate on tables but do not return one, so they do not
+### derive from HailTableExpression.
+###
 
 .HailTableCollect <- setClass("HailTableCollect",
                               slots=c(child="HailTableExpression"),
@@ -125,7 +133,7 @@ HailTableCollect <- function(child) {
 ### Accessors
 ###
 
-child <- function(x) x@child
+setMethod("child", "UnaryHailTableExpression", function(x) x@child)
 
 setMethod("context", "is.hail.expr.ir.TableIR", function(x) {
     HailContext(jvm(x))
@@ -135,7 +143,8 @@ setMethod("context", "is.hail.expr.ir.TableIR", function(x) {
 ### Type inference
 ###
 
-setMethod("hailType", "is.hail.expr.ir.TableIR", function(x) as(x$typ(), "HailType"))
+setMethod("hailType", "is.hail.expr.ir.TableIR",
+          function(x) as(x$typ(), "HailType"))
 
 setMethod("inferHailType", "UnaryHailTableExpression", function(x, env) {
     hailType(child(x))
@@ -189,6 +198,8 @@ setMethod("to_ir", "is.hail.expr.ir.TableIR", function(x, substitutor) {
 setMethod("toJava", "HailExpression", function(x, jvm) {
     substitutor <- Substitutor()
     ir <- to_ir(x, substitutor)
+    if (getOption("verbose"))
+        message("toJava: {", ir, "}")
     PARSE <- jvm$is$hail$expr$ir$IRParser[[parseMethod(x)]]
     jir <- PARSE(ir, JavaHashMap(list()),
                  JavaHashMap(substitutor$substitutions))
