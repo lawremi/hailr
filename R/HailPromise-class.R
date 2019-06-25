@@ -115,14 +115,15 @@ Promise <- function(expr, context) {
 }
 
 setGeneric("makePromise", function(type, expr, context) {
-    expr <- as(expr, expressionClass(context), strict=FALSE)
+    expr <- coalesce(as(expr, expressionClass(context), strict=FALSE))
     new2(promiseClass(type), expr=expr, context=context, check=FALSE)
 }, signature="type")
 
 setMethod("makePromise", "TBaseStruct", function(type, expr, context) {
     promise <- callNextMethod()
     subpromises <- HailPromiseList(lapply(names(type), function(nm) {
-        makePromise(type[[nm]], expr(promise)[[nm]], context)
+        makePromise(type[[nm]], HailGetField(expr(promise), HailSymbol(nm)),
+                    context)
     }))
     names(subpromises) <- names(type)
     initialize(promise, subpromises)

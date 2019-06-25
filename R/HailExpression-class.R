@@ -275,15 +275,42 @@ HailApplyAggOp <- function(accumulation) {
 
 setMethod("$", "HailExpression", function(x, name) x[[name]])
 
-setMethod("[[", "HailExpression", function(x, i, j, ...) {
-    stopifnot(missing(j), missing(...), isSingleString(i))
-    HailGetField(x, HailSymbol(i))
-})
+setGeneric("child", function(x) NULL)
+
+setMethod("child", "HailGetField", function(x) x@container)
+
+setMethod("child", "HailInsertFields", function(x) x@old)
 
 symbol <- function(x) x@symbol
 
 setMethod("hailType", "HailExpression",
           function(x, env = emptyenv()) inferHailType(x, env))
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Coalescence
+###
+### Currently more about simplifying compiler output than optimization
+###
+
+setGeneric("coalesce", function(x, child) x)
+
+setMethod("coalesce", c("HailExpression", "missing"), function(x, child) {
+    coalesce(x, hailr:::child(x))
+})
+
+setMethod("coalesce", c("HailGetField", "HailMakeStruct"), function(x, child) {
+    child[[name(x@element)]]
+})
+
+setMethod("coalesce", c("HailInsertFields", "HailExpression"),
+          function(x, child) {
+              sameField <- function(f) {
+                  identical(HailGetField(child, HailSymbol(f)), x@fields[[f]])
+              }
+              same <- vapply(names(x@fields), sameField, logical(1L))
+              x@fields <- x@fields[!same]
+              x
+          })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Type inference
