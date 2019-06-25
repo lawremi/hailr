@@ -17,7 +17,8 @@ setClass("org.apache.spark.sql.Dataset", contains="JavaObject")
 ###     syntax indicates the presence of an external interface.
 .HailTable <- setRefClass("HailTable",
                           fields=c(expr="HailTableExpression",
-                                   context="HailContext"))
+                                   context="HailContext",
+                                   .count="integer_OR_NULL"))
 ### The HailContext is a singleton in Scala, so we only store it to
 ### access the JVM.  We could just enforce a single JVM and store it
 ### globally, but currently we are more flexible: a single R session
@@ -136,9 +137,11 @@ setMethod("hailType", "HailTableMapRowsContext",
         check_compatible_keys(left, right)
         HailTable(HailTableJoin(left, right, how, left$keys()), .self$context)
     },
-    ## Could record upon construction to avoid repeated Java calls
     count = function() {
-        asLength(eval(HailTableCount(.self$expr), .self$context))
+        if (is.null(.self$.count))
+            .self$.count <- asLength(eval(HailTableCount(.self$expr),
+                                          .self$context))
+        .self$.count
     },
     head = function(n) {
         HailTable(HailTableHead(.self$expr, n), .self$context)
