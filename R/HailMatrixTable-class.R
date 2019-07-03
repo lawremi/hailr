@@ -133,25 +133,28 @@ setMethod("contextualDim", c("HailPromise", "HailMatrixTableEntryContext"),
 matrixTable <- function(x) x@matrixTable
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### Collection
+### Fulfillment
 ###
 
-setMethod("deriveTable", "HailMatrixTableEntryContext", function(context, expr)
-{
-    entries <- matrixTable(context)$selectEntries(x = expr)
-    entries$selectRows()$selectCols()$entries()$selectGlobals()
-})
+setMethod("contextualDeriveTable", "HailMatrixTableEntryContext",
+          function(context, x)
+          {
+              mt <- matrixTable(context)$projectEntries(x = x)
+              mt$selectRows()$selectCols()$entries()$selectGlobals()
+          })
 
 ### TODO: we always get the keys back, so if expr is simply a key
 ###       there is no reason to $selectRows/Cols() here.
 
-setMethod("deriveTable", "HailMatrixTableRowContext", function(context, expr) {
-    matrixTable(context)$selectRows(x = expr)$rows()$selectGlobals()
-})
+setMethod("contextualDeriveTable", "HailMatrixTableRowContext",
+          function(context, x) {
+              matrixTable(context)$projectRows(x = x)$rows()$selectGlobals()
+          })
 
-setMethod("deriveTable", "HailMatrixTableColContext", function(context, expr) {
-    matrixTable(context)$selectCols(x = expr)$cols()$selectGlobals()
-})
+setMethod("contextualDeriveTable", "HailMatrixTableColContext",
+          function(context, x) {
+              matrixTable(context)$projectCols(x = x)$cols()$selectGlobals()
+          })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### I/O

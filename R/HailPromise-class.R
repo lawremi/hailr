@@ -249,7 +249,7 @@ setMethod("bindROWS", "HailPromise",
 
 selectFields <- function(x, fields) {
     if (!identical(names(x), fields))
-        promiseCall(HailSelectFields, x, fields)
+        promiseCall(HailSelectFields, x, HailSymbolList(fields))
     else x
 }
 
@@ -300,6 +300,26 @@ setMethod("hailType", "StringPromise", function(x) TSTRING)
 setMethod("hailType", "StructPromise", function(x) new("TStruct", x@fieldTypes))
 setMethod("hailType", "ContainerPromise",
           function(x) get(typeClass(x), mode="function")(x@elementHailType))
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Fulfillment.
+###
+
+### Collecting a Hail promise is analogous to Solr: we derive a new
+### table representing the promise, collect that table and extract the
+### column.
+
+deriveTable <- function(x) {
+    contextualDeriveTable(context(x), x)
+}
+
+setGeneric("contextualDeriveTable",
+           function(context, x) standardGeneric("contextualDeriveTable"),
+           signature="context")
+
+setMethod("fulfill", "HailPromise", function(x) {
+    fulfill(lapply(deriveTable(x)$collect(), `[[`, 1L))
+})
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Coercion.
@@ -419,14 +439,9 @@ setMethod("contextualNames", c("DictPromise", "ApplyContext"),
               cast(promiseMethodCall(x, "keys"), TArray(TSTRING))
           })
 
-setGeneric("deriveTable",
-           function(context, expr) standardGeneric("deriveTable"),
-           signature="context")
-
-setMethod("deriveTable", "ApplyContext",
-          function(context, expr) {
-              deriveTable(context(containerPromise(context)),
-                          arrayMapExpr(context, expr))
+setMethod("contextualDeriveTable", "ApplyContext",
+          function(context, x) {
+              deriveTable(arrayMap(x))
           })
 
 setClass("AtomicApplyContext", contains="HailContext")
@@ -609,7 +624,7 @@ promiseCall <- function(fun, ..., args = list(...), CALL_CONSTRUCTOR) {
     ctx <- resolveContext(args)
     promises <- vapply(args, is, "Promise", FUN.VALUE=logical(1L))
     args[promises] <- lapply(args[promises], expr)
-    args <- lapply(args, as, expressionClass(ctx), strict=FALSE)
+    args <- lapply(args, as, languageClass(ctx), strict=FALSE)
     if (missing(CALL_CONSTRUCTOR)) {
         expr <- do.call(fun, args)
     } else {

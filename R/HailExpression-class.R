@@ -15,8 +15,6 @@ setClass("HailExpression", contains=c("Expression", "VIRTUAL"))
 
 setClassUnion("HailExpression_OR_NULL", c("HailExpression", "NULL"))
 
-.HailSymbol <- setClass("HailSymbol", contains="SimpleSymbol")
-
 .HailI32 <- setClass("HailI32", slots=c(x="integer"),
                      contains="HailExpression")
 
@@ -51,11 +49,6 @@ setClassUnion("HailExpression_OR_NULL", c("HailExpression", "NULL"))
                                 prototype=
                                     prototype(elementType="HailExpression"),
                                 contains="SimpleList")
-
-.HailSymbolList <- setClass("HailSymbolList",
-                            prototype=
-                                prototype(elementType="HailSymbol"),
-                            contains="HailExpressionList")
 
 setClassUnion("HailExpressionList_OR_NULL", c("HailExpressionList", "NULL"))
 
@@ -117,8 +110,8 @@ setClass("HailBinaryOp",
                               contains="HailExpression")
 
 .HailSelectFields <- setClass("HailSelectFields",
-                              slots=c(old="HailExpression",
-                                      fields="HailSymbolList"),
+                              slots=c(fields="HailSymbolList",
+                                      old="HailExpression"),
                               contains="HailExpression")
 
 .Accumulation <- setClass("Accumulation",
@@ -133,13 +126,13 @@ setClass("HailBinaryOp",
 .HailApplyAggOp <- setClass("HailApplyAggOp",
                             contains=c("Accumulation", "HailExpression"))
 
+## anything that we can express via to_ir()
+setClassUnion("HailLanguage", c("HailExpression", "HailSymbol",
+                                "HailExpressionList", "HailSymbolList"))
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Constructors
 ###
-
-HailSymbol <- function(name) {
-    .HailSymbol(name=name)
-}
 
 HailI32 <- function(x) {
     .HailI32(x=as.integer(x))
@@ -306,6 +299,9 @@ setMethod("coalesce", c("HailInsertFields", "HailExpression"),
                   identical(HailGetField(child, HailSymbol(f)), x@fields[[f]])
               }
               same <- vapply(names(x@fields), sameField, logical(1L))
+              if (all(same)) {
+                  return(child)
+              }
               x@fields <- x@fields[!same]
               x
           })
@@ -410,6 +406,8 @@ functionReturnType <- function(name, args, env, tag = NULL) {
 ### Coercion
 ###
 
+setAs("ANY", "HailLanguage", function(from) as(from, "HailExpression"))
+
 hailLiteral <- function(from, CONSTRUCTOR) {
     stopifnot(length(from) == 1L)
     if (is.na(from))
@@ -500,8 +498,6 @@ escape_id <- function(x) {
 }
 
 setMethod("as.character", "HailExpression", function(x) to_ir(x))
-
-setAs("character", "HailSymbol", function(from) HailSymbol(from))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### show()

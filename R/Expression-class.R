@@ -64,6 +64,8 @@ args <- function(x) x@args
 ### Factory
 ###
 
+setGeneric("languageClass", function(x) standardGeneric("languageClass"))
+
 setGeneric("expressionClass", function(x) standardGeneric("expressionClass"))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

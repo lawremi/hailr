@@ -23,6 +23,7 @@ Collate:
 	Context-class.R
 	Promise-class.R
 	HailType-class.R
+	HailSymbol-class.R
 	HailExpression-class.R
 	HailContext-class.R
 	HailPromise-class.R

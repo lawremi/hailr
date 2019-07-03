@@ -284,12 +284,6 @@ setMethod("merge", c("TDict", "TContainer"), function(x, y) {
 })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### Coercion (R-level)
-###
-
-setAs("list", "TStruct", function(from) TStruct(from))
-
-### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Coercion (between Java and R representations)
 ###
 
@@ -439,6 +433,8 @@ setMethod("show", "HailType", function(object) {
     cat(as.character(object))
     cat("\n")
 })
+
+setAs("list", "TStruct", function(from) TStruct(from))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Merging and munging

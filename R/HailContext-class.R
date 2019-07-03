@@ -47,6 +47,9 @@ HailContext <- function(impl) {
 ### Accessors
 ###
 
+setMethod("languageClass", "HailExpressionContext",
+          function(x) "HailLanguage")
+
 setMethod("expressionClass", "HailExpressionContext",
           function(x) "HailExpression")
 
@@ -66,13 +69,9 @@ setMethod("same", c("is.hail.HailContext", "is.hail.HailContext"),
 ### Evaluation
 ###
 
-### Collecting a Hail promise is analogous to Solr: we derive a new
-### table using the promise expression, collect that table and extract
-### the column.
-
 setMethod("eval", c("HailExpression", "HailExpressionContext"),
           function (expr, envir, enclos) {
-              fulfill(lapply(deriveTable(envir, expr)$collect(), `[[`, 1L))
+              fulfill(Promise(expr, envir))
           })
 
 setMethod("eval", c("HailExpression", "HailContext"),

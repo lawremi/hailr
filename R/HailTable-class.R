@@ -84,18 +84,18 @@ setMethod("hailType", "HailTableMapRowsContext",
         Promise(HailRef(HailSymbol("global")), HailMapGlobalsContext(.self))
     },
     select = function(...) {
-        fields <- c(...)
-        .self$mapRows(expr(.self$row()[fields]))
+        fields <- as.character(c(...))
+        .self$mapRows(.self$row()[fields])
     },
     selectGlobals = function(...) {
-        fields <- c(...)
-        .self$mapGlobals(expr(.self$global()[fields]))
+        fields <- as.character(c(...))
+        .self$mapGlobals(.self$globals()[fields])
     },
-    mapRows = function(p) {
-        HailTable(HailTableMapRows(.self$expr, expr(p)), .self$context)
+    mapRows = function(promise) {
+        HailTable(HailTableMapRows(.self$expr, expr(promise)), .self$context)
     },
-    mapGlobals = function(expr) {
-        HailTable(HailTableMapGlobals(.self$expr, expr(expr)), .self$context)
+    mapGlobals = function(promise) {
+        HailTable(HailTableMapGlobals(.self$expr, expr(promise)), .self$context)
     },
     annotate = function(...) {
         s <- DataFrame(...)
@@ -117,11 +117,12 @@ setMethod("hailType", "HailTableMapRowsContext",
     },
     addIndex = function(name) {
         r <- .self$row()
-        r[[name]] <- HailApplyScanOp(Accumulation("Count"))
+        r[[name]] <- Promise(HailApplyScanOp(Accumulation("Count")),
+                             context(r))
         .self$mapRows(r)
     },
-    filter = function(expr) {
-        HailTable(TableFilter(.self$expr, normExpr(expr)), .self$context)
+    filter = function(promise) {
+        HailTable(TableFilter(.self$expr, expr(promise)), .self$context)
     },
     keyBy = function(...) {
         ## In Python, this also accepts keyword arg select expressions,
@@ -144,22 +145,13 @@ setMethod("hailType", "HailTableMapRowsContext",
         HailTable(HailTableHead(.self$expr, n), .self$context)
     },
     collect = function() { # as an array of row structs, not a local R object
-        Promise(expr=HailTableCollect(.self$expr)$rows, context=.self$context)
+        Promise(expr=HailTableCollect(.self$expr), context=.self$context)$rows
     }
 )
 
 check_compatible_keys <- function(left, right) {
     identical(keyType(hailType(left)), keyType(hailType(right)))
 }
-
-## StructPromise <- function(...) {
-##     args <- list(...)
-##     if (length(args) == 1L && is.list(args[[1L]]))
-##         args <- args[[1L]]
-##     if (is.null(names(args)) || any(names(args) == ""))
-##         stop("StructPromise members arguments must be named")
-##     promiseCall(HailMakeStruct, TStruct(lapply(args, hailType)), args)
-## }
 
 setMethod("nrow", "HailTable", function(x) x$count())
 
@@ -183,19 +175,19 @@ setMethod("parent", "HailTableMapRowsContext",
           function(x) context(hailTable(x)))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### Collection
+### Fulfillment
 ###
 
-setMethod("deriveTable", "HailTableMapRowsContext", function(context, expr) {
-    ### TODO: we always get the keys back, so if expr is simply a key
-    ###       there is no reason to $select() here.
-    hailTable(context)$select(x = expr)$selectGlobals()
-})
+setMethod("contextualDeriveTable", "HailTableMapRowsContext",
+          function(context, x) {
+              hailTable(context)$project(x = x)$selectGlobals()
+          })
 
-setMethod("deriveTable", "HailMapGlobalsContext", function(context, expr) {
-    table <- globalTable(src(context)$selectGlobals(x = expr))
-    table$select(x = table$globals()$x)
-})
+setMethod("contextualDeriveTable", "HailMapGlobalsContext",
+          function(context, x) {
+              table <- globalTable(src(context)$projectGlobals(x = x))
+              table$project(x = table$globals()$x)
+          })
 
 globalTable <- function(x) {
     singleRowTable <- RangeHailTable(context(x), 1L, 1L)

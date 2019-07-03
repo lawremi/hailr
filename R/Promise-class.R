@@ -33,6 +33,8 @@ setMethod("context", "DataFrame", function(x) resolveContext(x))
 
 resolveContext <- function(objs) {
     ctxs <- Filter(Negate(is.null), lapply(objs, context))
+    if (length(ctxs) == 0L)
+        return(NULL)
     ans <- ctxs[[1L]]
     for (ctx in ctxs[-1L]) {
         if (!identical(ans, ctx)) {

@@ -68,7 +68,7 @@ setClass("UnaryHailTableExpression",
                            })
 
 .HailTableHead <- setClass("HailTableHead",
-                           slots=c(child="HailTableExpression", n="integer"),
+                           slots=c(n="integer"),
                            validity=function(object) {
                                if (!isSingleInteger(object@n))
                                    "@n must be single, non-NA integer"
@@ -133,7 +133,10 @@ HailTableCollect <- function(child) {
 ### Accessors
 ###
 
-setMethod("child", "UnaryHailTableExpression", function(x) x@child)
+setMethods("child", list("UnaryHailTableExpression",
+                         "HailTableCount",
+                         "HailTableCollect"),
+           function(x) x@child)
 
 setMethod("context", "is.hail.expr.ir.TableIR", function(x) {
     HailContext(jvm(x))
@@ -183,7 +186,7 @@ setMethod("inferHailType", "HailTableJoin", function(x, env) {
 setMethod("inferHailType", "HailTableCount", function(x, env) TINT64)
 
 setMethod("inferHailType", "HailTableCollect", function(x, env) {
-    ttable <- hailType(child(x))
+    ttable <- hailType(child(x), env)
     TStruct(rows=TArray(rowType(ttable)), globals=globalType(ttable))
 })
 
