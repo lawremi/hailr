@@ -19,7 +19,8 @@ setClass("OrderPromise", contains="Promise")
 ### Accessors
 ###
 
-expr <- function(x) x@expr
+setGeneric("expr", function(x) x@expr)
+
 `expr<-` <- function(x, value) {
     x@expr <- value
     x

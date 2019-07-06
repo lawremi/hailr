@@ -15,4 +15,8 @@ HailMapGlobalsContext <- function(src) {
     .HailMapGlobalsContext(src=src)
 }
 
-setMethod("hailType", "HailMapGlobalsContext", function(x) hailType(x@src))
+src <- function(x) x@src
+
+setMethod("hailType", "HailMapGlobalsContext", function(x) hailType(src(x)))
+
+setMethod("parent", "HailMapGlobalsContext", function(x) context(src(x)))

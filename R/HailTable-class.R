@@ -18,7 +18,8 @@ setClass("org.apache.spark.sql.Dataset", contains="JavaObject")
 .HailTable <- setRefClass("HailTable",
                           fields=c(expr="HailTableExpression",
                                    context="HailContext",
-                                   .count="integer_OR_NULL"))
+                                   .count="integer_OR_NULL"),
+                          contains="Promise")
 ### The HailContext is a singleton in Scala, so we only store it to
 ### access the JVM.  We could just enforce a single JVM and store it
 ### globally, but currently we are more flexible: a single R session
@@ -62,6 +63,10 @@ HailTableMapRowsContext <- function(hailTable) {
 ### Accessors
 ###
 
+setMethod("expr", "HailTable", function(x) x$expr)
+
+setMethod("context", "HailTable", function(x) x$context)
+
 setMethod("hailType", "HailTable", function(x) hailType(x$expr))
 
 setMethod("hailType", "HailTableMapRowsContext",
@@ -92,10 +97,10 @@ setMethod("hailType", "HailTableMapRowsContext",
         .self$mapGlobals(.self$globals()[fields])
     },
     mapRows = function(promise) {
-        HailTable(HailTableMapRows(.self$expr, expr(promise)), .self$context)
+        promiseCall(HailTableMapRows, .self, expr(promise))
     },
     mapGlobals = function(promise) {
-        HailTable(HailTableMapGlobals(.self$expr, expr(promise)), .self$context)
+        promiseCall(HailTableMapGlobals, .self, expr(promise))
     },
     annotate = function(...) {
         s <- DataFrame(...)
@@ -107,6 +112,8 @@ setMethod("hailType", "HailTableMapRowsContext",
         s <- DataFrame(...)
         r <- .self$row()
         r[names(s)] <- s
+        ### THOUGHT: could eval() slot in here?
+        ### eval(expr(r[names(s)]), context(r))
         .self$mapRows(r[names(s)])
     },
     annotateGlobals = function(...) {
@@ -164,8 +171,6 @@ hailTable <- function(x) x@hailTable
 setMethod("contextualLength", c("HailPromise", "HailTableMapRowsContext"),
           function(x, context) nrow(hailTable(context)))
 
-src <- function(x) x@src
-
 ### TODO: this needs to drop NAs from 'i'
 ## setMethod("extractROWS", c("HailTable", "HailWhichPromise"), function(x, i) {
 ##     extractROWS(x, logicalPromise(i))
@@ -178,6 +183,10 @@ setMethod("parent", "HailTableMapRowsContext",
 ### Fulfillment
 ###
 
+setMethod("fulfill", "HailTable", function(x) {
+    x$collect()
+})
+
 setMethod("contextualDeriveTable", "HailTableMapRowsContext",
           function(context, x) {
               hailTable(context)$project(x = x)$selectGlobals()
@@ -185,19 +194,9 @@ setMethod("contextualDeriveTable", "HailTableMapRowsContext",
 
 setMethod("contextualDeriveTable", "HailMapGlobalsContext",
           function(context, x) {
-              table <- globalTable(src(context)$projectGlobals(x = x))
-              table$project(x = table$globals()$x)
+              singleRowTable <- RangeHailTable(context, 1L, 1L)
+              singleRowTable$project(x = x)
           })
-
-globalTable <- function(x) {
-    singleRowTable <- RangeHailTable(context(x), 1L, 1L)
-    joinGlobals(singleRowTable, x)
-}
-
-joinGlobals <- function(left, right) {
-    utils <- jvm(left$impl)$is$hail$utils
-    HailTable(utils$joinGlobals(left$impl, right$impl, "x"))
-}
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Summarization

@@ -495,9 +495,12 @@ setMethod("merge", c("TSet", "HailType"), function(x, y) {
 ### Utilities
 ###
 
-promiseClass <- function(x) {
-    paste0(baseTypeName(x), "Promise")
-}
+setGeneric("promiseClass", function(x) standardGeneric("promiseClass"))
+
+setMethod("promiseClass", "HailType",
+          function(x) paste0(baseTypeName(x), "Promise"))
+
+setMethod("promiseClass", "TableType", function(x) "HailTable")
 
 typeClass <- function(x) {
     paste0("T", sub("Promise$", "", class(x)))
