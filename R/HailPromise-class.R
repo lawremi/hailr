@@ -318,8 +318,36 @@ setGeneric("contextualDeriveTable",
            signature="context")
 
 setMethod("fulfill", "HailPromise", function(x) {
-    fulfill(lapply(deriveTable(x)$collect(), `[[`, 1L))
+    fulfill(lapply(fulfill(deriveTable(x)), `[[`, 1L))
 })
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### Pushing from one context to another
+###
+
+setGeneric("push", function(x, remote) standardGeneric("push"))
+
+setMethod("push", c("Promise", "ANY"),
+          function(x, remote) {
+              if (identical(context(x), remote))
+                  return(x)
+              pushFrom(x, context(x), remote)
+          })
+
+setGeneric("pushFrom", function(x, origin, remote) standardGeneric("pushFrom"))
+
+setMethod("pushFrom", c("HailPromise", "HailMapGlobalsContext",
+                        "HailExpressionContext"),
+          function(x, origin, remote) {
+              promiseCall(HailGetGlobals, src(origin)$projectGlobals(x = x))$x
+          })
+
+setMethod("push", c("HailPromise", "HailContext"), function(x, remote) {
+    if (derivesFrom(context(x), remote))
+        return(x)
+    stop("cannot push promise to remote")
+})
+
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Coercion.
@@ -623,7 +651,7 @@ setMethod("strsplit", "StringPromise",
 promiseCall <- function(fun, ..., args = list(...), CALL_CONSTRUCTOR) {
     ctx <- resolveContext(args)
     promises <- vapply(args, is, "Promise", FUN.VALUE=logical(1L))
-    args[promises] <- lapply(args[promises], expr)
+    args[promises] <- lapply(args[promises], function(p) expr(push(p, ctx)))
     args <- lapply(args, as, languageClass(ctx), strict=FALSE)
     if (missing(CALL_CONSTRUCTOR)) {
         expr <- do.call(fun, args)

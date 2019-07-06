@@ -67,8 +67,6 @@ pushCols <- function(cols, src_context, target_context) {
     }
 }
 
-setGeneric("push", function(x, remote) standardGeneric("push"))
-
 setMethod("push", c("HailDataFrame", "missing"),
           function(x, remote) {
               push(x, context(x))
