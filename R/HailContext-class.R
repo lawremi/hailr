@@ -71,7 +71,8 @@ setMethod("same", c("is.hail.HailContext", "is.hail.HailContext"),
 
 setMethod("eval", c("HailExpression", "HailExpressionContext"),
           function (expr, envir, enclos) {
-              fulfill(Promise(expr, envir))
+              p <- Promise(expr, envir)
+              fulfill(lapply(fulfill(deriveTable(p)), `[[`, 1L))
           })
 
 setMethod("eval", c("HailExpression", "HailContext"),

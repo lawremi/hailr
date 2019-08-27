@@ -183,9 +183,10 @@ setMethod("parent", "HailTableMapRowsContext",
 ### Fulfillment
 ###
 
-setMethod("fulfill", "HailTable", function(x) {
-    x$collect()
-})
+setMethod("eval", c("HailTableExpression", "HailContext"),
+          function(expr, envir, enclos) {
+              Promise(HailTableCollect(expr), context)$rows
+          })
 
 setMethod("contextualDeriveTable", "HailTableMapRowsContext",
           function(context, x) {

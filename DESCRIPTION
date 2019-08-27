@@ -26,9 +26,9 @@ Collate:
 	HailSymbol-class.R
 	HailExpression-class.R
 	HailContext-class.R
+	HailMapGlobalsContext-class.R
 	HailPromise-class.R
 	HailTableExpression-class.R
-	HailMapGlobalsContext-class.R
 	HailTable-class.R
 	HailDataFrame-class.R
 	HailGRanges-class.R

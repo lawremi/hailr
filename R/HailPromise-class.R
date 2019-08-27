@@ -317,10 +317,6 @@ setGeneric("contextualDeriveTable",
            function(context, x) standardGeneric("contextualDeriveTable"),
            signature="context")
 
-setMethod("fulfill", "HailPromise", function(x) {
-    fulfill(lapply(fulfill(deriveTable(x)), `[[`, 1L))
-})
-
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Pushing from one context to another
 ###

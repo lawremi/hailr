@@ -74,11 +74,10 @@ setMethod("[", "Promise", function(x, i, j, ..., drop = TRUE) {
 ### Fulfillment
 ###
 
-setGeneric("fulfill", function(x, ...) standardGeneric("fulfill"))
+setGeneric("fulfill", function(x, ...) x)
 setMethod("fulfill", "Promise", function(x) {
     eval(expr(x), context(x))
 })
-setMethod("fulfill", "ANY", function(x) x)
 
 setMethod("as.logical", "Promise", function(x) as.logical(fulfill(x)))
 setMethod("as.integer", "Promise", function(x) as.integer(fulfill(x)))
