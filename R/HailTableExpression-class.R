@@ -153,20 +153,20 @@ setMethod("inferHailType", "UnaryHailTableExpression", function(x, env) {
     hailType(child(x))
 })
 
-as.environment.TableType <- function(x) {
+setMethod("hailTypeEnv", "TableType", function(x) {
     list2env(list(global=globalType(x), row=rowType(x)), parent=emptyenv())
-}
+})
 
 setMethod("inferHailType", "HailTableMapRows", function(x, env) {
     old_type <- callNextMethod()
     initialize(old_type,
-               rowType = inferHailType(expr(x), as.environment(old_type)))
+               rowType = inferHailType(expr(x), hailTypeEnv(old_type)))
 })
 
 setMethod("inferHailType", "HailTableMapGlobals", function(x, env) {
     old_type <- callNextMethod()
     initialize(old_type,
-               globalType = inferHailType(expr(x), as.environment(old_type)))
+               globalType = inferHailType(expr(x), hailTypeEnv(old_type)))
 })
 
 setMethod("inferHailType", "HailTableKeyBy", function(x, env) {

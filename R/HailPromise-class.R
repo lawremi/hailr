@@ -110,7 +110,7 @@ setClassUnion("Character", c("character", "StringPromise"))
 ###
 
 Promise <- function(expr, context) {
-    type <- hailType(expr, as.environment(hailType(context)))
+    type <- hailType(expr, hailTypeEnv(context))
     makePromise(type, expr, context)
 }
 
@@ -473,21 +473,15 @@ setClass("AtomicApplyContext", contains="HailContext")
 setMethod("contextualLength", c("HailPromise", "AtomicApplyContext"),
           function(x, context) 1L)
 
-.ApplyType <- setClass("ApplyType",
-                       slots=c(env="environment"),
-                       contains="HailType")
-
-setMethod("hailType", "ApplyContext",
+setMethod("hailTypeEnv", "ApplyContext",
           function(x) {
               container <- containerPromise(x)
-              parent <- as.environment(hailType(context(container)))
+              parent <- hailTypeEnv(context(container))
               env <- new.env(parent=parent)
               env[[as.character(argName(x))]] <-
                   elementType(hailType(container))
-              .ApplyType(env=env)
+              env
           })
-
-as.environment.ApplyType <- function(x) x@env
 
 elementPromise <- function(context) {
     promise <- Promise(HailRef(argName(context)), context)

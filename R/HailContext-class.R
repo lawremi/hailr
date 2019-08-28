@@ -83,16 +83,12 @@ setMethod("eval", c("HailExpression", "HailContext"),
           })
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### Type
+### hailTypeEnv()
 ###
-### Just a dummy type that returns an empty environment
+### Returns an environment for resolving types during type inference 
 ###
 
-HAIL_CONTEXT_TYPE <- setClass("HailContextType", contains="HailType")()
-
-as.environment.HailContextType <- function(x) emptyenv()
-
-setMethod("hailType", "HailContext", function(x) HAIL_CONTEXT_TYPE)
+setGeneric("hailTypeEnv", function(x) emptyenv())
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### File I/O

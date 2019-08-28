@@ -72,6 +72,9 @@ setMethod("hailType", "HailTable", function(x) hailType(x$expr))
 setMethod("hailType", "HailTableMapRowsContext",
           function(x) hailType(x@hailTable))
 
+setMethod("hailTypeEnv", "HailTableMapRowsContext",
+          function(x) hailTypeEnv(hailType(x)))
+
 ## We lazily (as features are needed) reimplement the Python API
 
 .HailTable$methods(
