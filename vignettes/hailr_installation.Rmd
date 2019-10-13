@@ -1,0 +1,37 @@
+---
+title: "hailr installation"
+author: "Samuel Macêdo"
+date: "April 19, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### walkthrough
+
+1) fork the repo <https://github.com/lawremi/hailr> and create a project   
+2) install BiocManager and devtools on CRAN
+
+```{r, eval = FALSE}
+install.packages("BiocManager")
+install.packages("devtools")
+```
+
+3) install the dependecies in this order
+
+```{R, eval = FALSE}
+BiocManager::install("IRanges")
+BiocManager::install("GenomicRanges")
+BiocManager::install("BiocParallel")
+BiocManager::install("SummarizedExperiment")
+devtools::install_github("Bioconductor/S4Vectors")
+```
+
+### some notes
+1) The `BioGenerics` package doesn't build in R 3.5, but when you install `IRanges` first `BioGenerics` works fine. That's why `IRanges` comes first.
+
+2) `BiocParallel` doesn't appear in the dependencies, but it is required to build `SummarizedExperiment`.
+
+3) `hailr` requires a `S4Vectors` version greater than the version in Bioconductor repository. You need to install the dev version on GitHub.
