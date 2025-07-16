@@ -3,7 +3,7 @@ Type: Package
 Title: Interface between R and Hail
 Version: 0.0.0
 Author: Michael Lawrence
-Maintainer: Michael Lawrence <michafla@gene.com>
+Maintainer: Michael Lawrence <lawremi@gmail.com>
 Description: Enables computing on genotype data within Hail (and Spark)
              by writing R code based on Bioconductor APIs
 License: MIT
